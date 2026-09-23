@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import sys
 
-sys.path.insert(0, "/Users/mohammed/Desktop/roadmind")
-
 
 def run() -> int:
     from .ui.main_window import build_app
