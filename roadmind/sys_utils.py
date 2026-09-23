@@ -11,11 +11,38 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def is_accessibility_trusted() -> bool:
+    """True when this process may post synthetic events (keyboard control).
+
+    Note: AXIsProcessTrusted lives in ApplicationServices/HIServices, not
+    Quartz - calling Quartz.AXIsProcessTrusted raises and previously made the
+    app *always* report MISSING no matter what the user granted.
+    """
+    try:
+        import ApplicationServices as AS
+        if hasattr(AS, "AXIsProcessTrusted"):
+            return bool(AS.AXIsProcessTrusted())
+    except Exception:
+        pass
     try:
         import Quartz
-        return bool(Quartz.AXIsProcessTrusted())
+        fn = getattr(Quartz, "CGPreflightPostEventAccess", None)
+        if fn:
+            return bool(fn())
     except Exception:
-        return False
+        pass
+    return False
+
+
+def input_monitoring_allowed() -> bool:
+    """True when this process may observe input (global hotkey)."""
+    try:
+        import Quartz
+        fn = getattr(Quartz, "CGPreflightListenEventAccess", None)
+        if fn:
+            return bool(fn())
+    except Exception:
+        pass
+    return False
 
 
 def is_screen_capture_allowed() -> bool:
@@ -29,23 +56,21 @@ def is_screen_capture_allowed() -> bool:
         return True
 
 
-def open_permissions_settings() -> None:
-    """Open the System Settings pane for the given permission."""
+def open_settings_pane(suffix: str) -> None:
+    """Open a System Settings pane by URL suffix, e.g. 'Privacy_Accessibility'."""
     try:
         os.system(
-            'open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"'
-        )
+            'open "x-apple.systempreferences:com.apple.preference.security?%s"' % suffix)
     except Exception:
         pass
+
+
+def open_permissions_settings() -> None:
+    open_settings_pane("Privacy_ScreenCapture")
 
 
 def open_accessibility_settings() -> None:
-    try:
-        os.system(
-            'open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"'
-        )
-    except Exception:
-        pass
+    open_settings_pane("Privacy_Accessibility")
 
 
 def list_windows(min_w: int = 400, min_h: int = 300, exclude_pid: int | None = None):

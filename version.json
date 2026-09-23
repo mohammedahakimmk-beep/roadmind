@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
-  "notes": "Initial release: local CV autopilot, control whitelist, fully-automatic calibration, Tesla-style vision overlay.",
-  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.1.0/RoadMind-0.1.0.dmg"
+  "version": "0.1.1",
+  "notes": "Fixed the Accessibility permission check (it always reported missing - now live-updating status chips instead of nag buttons), plus a full visual redesign.",
+  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.1.1/RoadMind-0.1.1.dmg"
 }
