@@ -6,13 +6,13 @@ import sys
 
 
 def run() -> int:
-    from .ui.main_window import build_app
+    from roadmind.ui.main_window import build_app
     app, _ = build_app()
     return app.mainloop()
 
 
 def doctor() -> int:
-    from . import sys_utils
+    from roadmind import sys_utils
     import Quartz
     listen = getattr(Quartz, "CGPreflightListenEventAccess", None)
     print("RoadMind doctor")
