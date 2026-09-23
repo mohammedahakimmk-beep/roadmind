@@ -1,0 +1,76 @@
+"""Object detection via Ultralytics YOLO, run on Metal (MPS) when available."""
+
+from __future__ import annotations
+
+import threading
+import time
+
+import numpy as np
+
+# COCO class names we care about
+CLASSES = {
+    0: "person",
+    1: "bicycle",
+    2: "car",
+    3: "motorcycle",
+    5: "bus",
+    7: "truck",
+    9: "traffic_light",
+    11: "stop_sign",
+}
+
+VEHICLE_CLASSES = {2, 3, 5, 7}
+
+
+class Detector:
+    def __init__(self, model_name: str = "yolo11n.pt", conf: float = 0.35, imgsz: int = 640):
+        self.model = None
+        self.model_name = model_name
+        self.conf = conf
+        self.imgsz = imgsz
+        self.device = "cpu"
+        self._lock = threading.Lock()
+        self._load()
+
+    def _load(self):
+        try:
+            from ultralytics import YOLO
+            import torch
+            if torch.backends.mps.is_available():
+                self.device = "mps"
+            self.model = YOLO(self.model_name)
+            if self.device == "mps":
+                self.model.to("mps")
+        except Exception:
+            self.model = None
+
+    @property
+    def ready(self) -> bool:
+        return self.model is not None
+
+    def detect(self, frame_bgr: np.ndarray) -> list[dict]:
+        """Return list of {x,y,w,h,cls,conf,label,is_vehicle} in frame pixel coords."""
+        if self.model is None:
+            return []
+        H, W = frame_bgr.shape[:2]
+        try:
+            with self._lock:
+                r = self.model.predict(frame_bgr, imgsz=self.imgsz, conf=self.conf,
+                                       verbose=False, device=self.device)
+            dets = []
+            if r and r[0].boxes is not None:
+                for box in r[0].boxes:
+                    cid = int(box.cls[0].item())
+                    if cid not in CLASSES:
+                        continue
+                    x1, y1, x2, y2 = [float(v) for v in box.xyxy[0]]
+                    dets.append({
+                        "x": x1 / W, "y": y1 / H,
+                        "w": (x2 - x1) / W, "h": (y2 - y1) / H,
+                        "cls": cid, "label": CLASSES[cid],
+                        "conf": float(box.conf[0].item()),
+                        "is_vehicle": cid in VEHICLE_CLASSES,
+                    })
+            return dets
+        except Exception:
+            return []
