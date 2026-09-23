@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import threading
 import time
 
 import numpy as np
+
+from .. import sys_utils
 
 # COCO class names we care about
 CLASSES = {
@@ -22,10 +26,26 @@ CLASSES = {
 VEHICLE_CLASSES = {2, 3, 5, 7}
 
 
+def resolve_model_path(model_name: str = "yolo11n.pt") -> str:
+    """Locate the weights file: bundled resource -> data dir -> download target."""
+    if getattr(sys, "frozen", False):
+        base = getattr(sys, "_MEIPASS", "")
+        bundled = os.path.join(base, model_name)
+        if os.path.exists(bundled):
+            return bundled
+    local = os.path.join(sys_utils.DATA_DIR, model_name)
+    if os.path.exists(local):
+        return local
+    if os.path.exists(model_name):
+        return model_name
+    return local  # ultralytics will download here (writable, offline-safe)
+
+
 class Detector:
     def __init__(self, model_name: str = "yolo11n.pt", conf: float = 0.35, imgsz: int = 640):
         self.model = None
         self.model_name = model_name
+        self.path = resolve_model_path(model_name)
         self.conf = conf
         self.imgsz = imgsz
         self.device = "cpu"
@@ -38,7 +58,7 @@ class Detector:
             import torch
             if torch.backends.mps.is_available():
                 self.device = "mps"
-            self.model = YOLO(self.model_name)
+            self.model = YOLO(self.path)
             if self.device == "mps":
                 self.model.to("mps")
         except Exception:

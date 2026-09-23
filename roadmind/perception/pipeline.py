@@ -76,7 +76,10 @@ class PerceptionEngine:
                 time.sleep(0.05)
                 continue
             self.frame = frame
-            self._process(frame)
+            try:
+                self._process(frame)
+            except Exception:
+                pass
             dt = time.perf_counter() - t0
             self._frame_time.append(dt)
             if len(self._frame_time) > 30:

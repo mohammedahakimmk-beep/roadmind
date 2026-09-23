@@ -11,7 +11,8 @@ a = Analysis(
     [os.path.join(ROOT, "roadmind", "__main__.py")],
     pathex=[ROOT],
     binaries=[],
-    datas=[(os.path.join(ROOT, "version.json"), ".")],
+    datas=[(os.path.join(ROOT, "version.json"), "."),
+           (os.path.join(ROOT, "yolo11n.pt"), ".")],
     hiddenimports=[
         'pynput.keyboard._darwin', 'pynput.mouse._darwin',
         'mss', 'pyobjc_framework_Quartz', 'pyobjc_framework_Vision',

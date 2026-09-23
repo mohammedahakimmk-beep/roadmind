@@ -44,6 +44,15 @@ jobs:
           echo " \"notes\": \"Release $GITHUB_REF_NAME - see the changelog below.\"," >> version.json
           echo " \"url\": \"https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/RoadMind-$VERSION.dmg\"}" >> version.json
 
+      - name: Create or update release
+        run: >
+          gh release create "$GITHUB_REF_NAME" \
+            --title "RoadMind $GITHUB_REF_NAME" \
+            --notes "Automated release built by GitHub Actions from tag $GITHUB_REF_NAME." \
+            2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Attach DMG to release
         run: gh release upload "$GITHUB_REF_NAME" "dist/RoadMind-$VERSION.dmg" --clobber
         env:
