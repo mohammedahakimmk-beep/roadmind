@@ -1,5 +1,3 @@
-{
-  "version": "0.1.3",
-  "notes": "Updates gate the launch now: RoadMind checks for a newer version before the window opens and offers to update first.",
-  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.1.3/RoadMind-0.1.3.dmg"
-}
+{"version": "0.1.3",
+ "notes": "Release v0.1.3 - see the changelog below.",
+ "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.1.3/RoadMind-0.1.3.dmg"}
