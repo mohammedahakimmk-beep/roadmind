@@ -2,8 +2,9 @@ name: release
 
 # Builds the RoadMind DMG on a macOS runner and attaches it to a GitHub
 # Release whenever you push a tag like v0.2.0:
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.2.0 && git push origin v0.2.0
 # Also rewrites version.json so in-app update hints point at the release.
+# The version is always derived from the tag inline (each step is its own shell).
 
 on:
   push:
@@ -35,17 +36,15 @@ jobs:
 
       - name: Build DMG
         run: |
-          export VERSION="${GITHUB_REF_NAME#v}"
-          export APP_VERSION="$VERSION"
-          .venv/bin/python -m PyInstaller --clean --noconfirm packaging/RoadMind.spec
-          VERSION="$VERSION" ROADMIND_SKIP_BUILD=1 packaging/build_dmg.sh
+          APP_VERSION="${GITHUB_REF_NAME#v}" .venv/bin/python -m PyInstaller --clean --noconfirm packaging/RoadMind.spec
+          VERSION="${GITHUB_REF_NAME#v}" ROADMIND_SKIP_BUILD=1 packaging/build_dmg.sh
           ls -la dist/
 
       - name: Update version manifest
         run: |
-          echo "{\"version\": \"$VERSION\"," > version.json
+          echo "{\"version\": \"${GITHUB_REF_NAME#v}\"," > version.json
           echo " \"notes\": \"Release $GITHUB_REF_NAME - see the changelog below.\"," >> version.json
-          echo " \"url\": \"https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/RoadMind-$VERSION.dmg\"}" >> version.json
+          echo " \"url\": \"https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/RoadMind-${GITHUB_REF_NAME#v}.dmg\"}" >> version.json
 
       - name: Create or update release
         run: >
@@ -57,7 +56,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Attach DMG to release
-        run: gh release upload "$GITHUB_REF_NAME" "dist/RoadMind-$VERSION.dmg" --clobber
+        run: gh release upload "$GITHUB_REF_NAME" "dist/RoadMind-${GITHUB_REF_NAME#v}.dmg" --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -66,5 +65,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.json
-          git commit -m "chore: bump version manifest to $VERSION"
-          git push origin HEAD:main
+          git commit -m "chore: bump version manifest to ${GITHUB_REF_NAME#v}" || true
+          git push origin HEAD:main || true
