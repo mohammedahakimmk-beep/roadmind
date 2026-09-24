@@ -151,7 +151,7 @@ class MainWindow(tk.Tk):
                 "Update available",
                 f"A newer RoadMind is out (v{latest}, you have {__version__}).\n\n"
                 f"{self._update_notes}\n\n"
-                "Open the download page so you can update the DMG instead of reinstalling?"):
+                "Open the download page for the new build?"):
             updater.open_release(self._update_url or
                                  "https://github.com/mohammedahakimmk-beep/roadmind/releases")
 
@@ -188,7 +188,7 @@ class MainWindow(tk.Tk):
         if not self.capture:
             messagebox.showwarning("No target", "Pick a game window first.")
             return
-        if not sys_utils.is_accessibility_trusted():
+        if sys_utils.requires_accessibility() and not sys_utils.is_accessibility_trusted():
             messagebox.showwarning(
                 "Keyboard blocked \u2014 one fix",
                 "RoadMind needs the Accessibility permission to send keyboard "
@@ -236,7 +236,7 @@ class MainWindow(tk.Tk):
         if not self.capture:
             messagebox.showwarning("No target", "Select a game window first.")
             return
-        if not sys_utils.is_accessibility_trusted():
+        if sys_utils.requires_accessibility() and not sys_utils.is_accessibility_trusted():
             messagebox.showwarning("Keyboard blocked",
                                    "Accessibility is required to send keys during "
                                    "calibration. Fix it from the KEYBOARD chip above.")

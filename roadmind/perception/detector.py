@@ -56,7 +56,9 @@ class Detector:
         try:
             from ultralytics import YOLO
             import torch
-            if torch.backends.mps.is_available():
+            # Windows torch has no 'mps' attribute; guard so CPU still loads
+            mps = getattr(getattr(torch, "backends", None), "mps", None)
+            if mps is not None and mps.is_available():
                 self.device = "mps"
             self.model = YOLO(self.path)
             if self.device == "mps":

@@ -1,46 +1,58 @@
 # RoadMind
 
-Open-source **AI autopilot for driving games on macOS**. It watches the game window on
-your screen with a **fully-local computer-vision brain**, shows a **Tesla-style
-3D vision overlay** of what it sees and what it's thinking, remembers the road
-(speed limits, traffic lights, vehicles), and drives through **only the controls
-you whitelist**.
+## Official announcement — the macOS DMG is discontinued
+
+**RoadMind is now a Windows app. The macOS DMG is officially discontinued
+(v0.1.3 was the last macOS build).**
+
+Why? macOS's TCC/Gatekeeper quarantine makes *even a permission-clean build*
+unreliable — every rebuilt bundle is a "new app" to macOS, so the Screen
+Recording / Input Monitoring / Accessibility grants silently reset, and there
+is no admin-level bypass. That treadmill doesn't apply on Windows: **one
+self-contained EXE, zero permissions, zero install**.
+
+Download the current Windows EXE from the
+[releases page](https://github.com/mohammedahakimmk-beep/roadmind/releases).
+
+---
+
+Open-source **AI autopilot for driving games**. It watches the game window on
+your screen with a **fully-local computer-vision brain**, shows a
+**Tesla-style 3D vision overlay** of what it sees and what it's thinking,
+remembers the road (speed limits, traffic lights, vehicles), and drives
+through **only the controls you whitelist**.
 
 No cloud. No teaching per game. Works on any game window you point it at.
 
 ## Features
 
-- **Whitelist gate** — before every drive you choose exactly which controls exist
+- **Whitelist gate** — before every drive you choose exactly which controls exit
   (throttle, brake, steering, blinkers, honk, ABS…). Unchecked → the AI is *blocked*
   from using that action.
 - **Fully-automatic calibration** — RoadMind probes each whitelisted key
   (holds it, measures the on-screen response with optical flow) and records
   latency + gain. Re-run for any game.
 - **Local CV brain** — YOLO11n (vehicles / people / traffic lights / stop signs),
-  circle-sign + OCR **speed-limit reader**, native Apple Vision OCR, lane detection,
-  sparse optical flow motion/speed estimate — all on the Metal (MPS) accelerator.
+  circle-sign + OCR **speed-limit reader**, lane detection, sparse optical flow
+  motion/speed estimate — accelerated on GPU when available.
 - **Memory** — latches speed limits, traffic light state, leader-vehicle gaps,
   motion history, and shows everything in the telemetry panel.
 - **Tesla-style view** — the live game frame plus a projected 3D road, lane lines,
   wireframe vehicles, sign marks, speed-limit dial, and the AI's current intent.
 - **Safety** — `ctrl+alt+Q` global kill, auto-pause when the game loses focus,
   release-everything on stop, speed clamps.
+- **Launch-gated updates** — on every start the app checks GitHub for a newer
+  version *before* the window opens and offers to update first.
 
-## Install / run (dev)
+## Install (Windows)
 
-Requires macOS, Homebrew Python 3.12 + `python-tk` (GUI toolkit), ~1.5 GB for deps.
+1. Download **`RoadMind-<version>-Windows.exe`** from the
+   [releases page](https://github.com/mohammedahakimmk-beep/roadmind/releases).
+2. Run it. No install, no permissions, no admin.
+3. Windows SmartScreen may warn about an unsigned EXE → *More info → Run anyway*
+   (signing is on the roadmap).
 
-```bash
-brew install python@3.12 python-tk@3.12
-python3.12 -m venv .venv
-.venv/bin/pip install -e .
-./run.sh                          # or: .venv/bin/python -m roadmind
-.venv/bin/python -m roadmind --doctor   # check permissions + window detection
-```
-
-On first launch grant **Screen Recording** and **Accessibility** to the terminal /
-process running RoadMind (RoadMind links buttons to the right System Settings panes).
-The first YOLO inference takes a few seconds (Metal kernel warm-up + model download); after that each frame is ~35 ms.
+The updater nags you automatically when a newer version is released.
 
 ## Use
 
@@ -50,11 +62,27 @@ The first YOLO inference takes a few seconds (Metal kernel warm-up + model downl
 4. **ARM AUTOPILOT** — watch the Tesla-style vision and its thinking in real time.
 5. `ctrl+alt+Q` anywhere to kill everything instantly.
 
+## Install / run (dev)
+
+Requires Python 3.12 + Tk, ~1.5 GB for deps.
+
+```bash
+python -m venv .venv
+.venv\Scripts\pip install -e .
+.venv\Scripts\python -m roadmind                     # GUI (dev mode)
+.venv\Scripts\python -m roadmind --doctor           # window detection check
+.venv\Scripts\python -m roadmind --selftest         # headless smoke test
+```
+
+The macOS sources remain buildable (`./run.sh`) for developers, but no new
+macOS binaries are released.
+
 ## Packaging
 
-`packaging/build_dmg.sh` builds a `.app` via PyInstaller and wraps it in a DMG.
-Ad-hoc signing by default (fine for your machine); set
-`ROADMIND_SIGN_IDENTITY` + Apple notary credentials for real distribution.
+`packaging/windows.spec` builds the one-file EXE with PyInstaller; GitHub
+Actions (`release.yml`) does it automatically for every `v*` tag and rewrites
+the version manifest. macOS packaging (`packaging/build_dmg.sh`) is deprecated
+and unmaintained.
 
 ## License
 

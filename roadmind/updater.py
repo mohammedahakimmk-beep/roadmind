@@ -9,6 +9,7 @@ standard library; any network failure is silent.
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import urllib.request
 import webbrowser
@@ -49,6 +50,10 @@ def check_once(timeout: float = 6.0):
     latest = str(data.get("version", ""))
     url = str(data.get("url", ""))
     notes = str(data.get("notes", ""))
+    # Windows builds download the EXE directly; macOS shows the release page
+    # (where it now reads the official deprecation notice).
+    if sys.platform == "win32":
+        url = str(data.get("exe_url") or url) or url
     return (latest, url, notes, is_newer(latest, __version__))
 
 

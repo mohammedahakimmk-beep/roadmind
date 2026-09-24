@@ -1,10 +1,13 @@
-name: release
+name: release-windows
 
-# Builds the RoadMind DMG on a macOS runner and attaches it to a GitHub
-# Release whenever you push a tag like v0.2.0:
+# Builds the RoadMind Windows EXE on a Windows runner and attaches it to a
+# GitHub Release whenever you push a tag like v0.2.0:
 #   git tag v0.2.0 && git push origin v0.2.0
-# Also rewrites version.json so in-app update hints point at the release.
-# The version is always derived from the tag inline (each step is its own shell).
+# Also rewrites version.json so in-app update checks point at the EXE.
+#
+# macOS DMG builds are OFFICIALLY DISCONTINUED (v0.1.3 was the last). macOS
+# TCC/Gatekeeper/quarantine made shipping and re-granting permissions a
+# treadmill for the same app; Windows requires no permissions at all.
 
 on:
   push:
@@ -15,55 +18,87 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Python + Tk
-        run: |
-          brew install python@3.12 python-tk@3.12
-          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
-      - name: Set up venv
+      - name: Install deps
         run: |
-          python3.12 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install pyinstaller
-          .venv/bin/python -m pip install -e .
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -e .
 
-      - name: Fetch YOLO weights (bundled into the app)
-        run: curl -sSL -o yolo11n.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt
-
-      - name: Build DMG
+      - name: Fetch YOLO weights (bundled into the exe)
+        shell: pwsh
         run: |
-          APP_VERSION="${GITHUB_REF_NAME#v}" .venv/bin/python -m PyInstaller --clean --noconfirm packaging/RoadMind.spec
-          VERSION="${GITHUB_REF_NAME#v}" ROADMIND_SKIP_BUILD=1 packaging/build_dmg.sh
-          ls -la dist/
+          Invoke-WebRequest -Uri https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt -OutFile yolo11n.pt
 
-      - name: Update version manifest
+      - name: Build EXE (one-file)
+        shell: pwsh
         run: |
-          echo "{\"version\": \"${GITHUB_REF_NAME#v}\"," > version.json
-          echo " \"notes\": \"Release $GITHUB_REF_NAME - see the changelog below.\"," >> version.json
-          echo " \"url\": \"https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/RoadMind-${GITHUB_REF_NAME#v}.dmg\"}" >> version.json
+          python -m PyInstaller --clean --noconfirm packaging/windows.spec
+          Get-ChildItem dist
+
+      - name: Smoke-test the bundle (headless selftest inside the exe)
+        shell: pwsh
+        run: |
+          & "dist\RoadMind.exe" --selftest | Tee-Object -Variable out
+          if ("$out" -notmatch "SELFTEST OK") { exit 1 }
+          & "dist\RoadMind.exe" --doctor | Tee-Object -Variable out2
 
       - name: Create or update release
-        run: >
-          gh release create "$GITHUB_REF_NAME" \
-            --title "RoadMind $GITHUB_REF_NAME" \
-            --notes "Automated release built by GitHub Actions from tag $GITHUB_REF_NAME." \
-            2>/dev/null || true
+        shell: pwsh
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" `
+            --title "RoadMind $env:GITHUB_REF_NAME" `
+            --notes "RoadMind $env:GITHUB_REF_NAME - Windows EXE.
+
+          IMPORTANT: the macOS DMG is officially discontinued (v0.1.3 was the
+          last one). macOS TCC/Gatekeeper made even a permission-clean build
+          unreliable, so RoadMind is now Windows-only.
+
+          What changed in this release:
+          - Windows one-file EXE (no install, no permissions to grant)
+          - Same local CV brain, Tesla-style overlay, calibration, whitelist
+          - Launch-gated updates (checks GitHub before the window opens)" 2>$null
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Attach DMG to release
-        run: gh release upload "$GITHUB_REF_NAME" "dist/RoadMind-${GITHUB_REF_NAME#v}.dmg" --clobber
+      - name: Attach EXE
+        shell: pwsh
+        run: |
+          $v = $env:GITHUB_REF_NAME.TrimStart("v")
+          Copy-Item dist\RoadMind.exe "RoadMind-$v-Windows.exe"
+          gh release upload "$env:GITHUB_REF_NAME" "RoadMind-$v-Windows.exe" --clobber
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Update version manifest
+        shell: pwsh
+        run: |
+          $v = $env:GITHUB_REF_NAME.TrimStart("v")
+          $notes = "RoadMind is now Windows-only. The macOS DMG is officially discontinued (last: v0.1.3); macOS TCC/Gatekeeper made shipping unreliable. Download the EXE below - no permissions required."
+          @"
+          {
+            "version": "$v",
+            "notes": "$notes",
+            "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/tag/$env:GITHUB_REF_NAME",
+            "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/$env:GITHUB_REF_NAME/RoadMind-$v-Windows.exe"
+          }
+          "@ | Set-Content -Encoding UTF8 version.json
 
       - name: Commit version manifest
+        shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.json
-          git commit -m "chore: bump version manifest to ${GITHUB_REF_NAME#v}" || true
-          git push origin HEAD:main || true
+          git commit -m "chore: bump version manifest" 2>$null
+          git push origin HEAD:main 2>$null
+        env:
+          GH_TOKEN: ${{ github.token }}

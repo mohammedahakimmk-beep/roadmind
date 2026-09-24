@@ -1,8 +1,7 @@
 [project]
 name = "roadmind"
-version = "0.1.0"
-description = "Open-source AI autopilot for driving games on macOS. Local CV brain, Tesla-style vision, learn-by-calibration, whitelisted controls only."
-readme = "README.md"
+version = "0.2.0"
+description = "Open-source AI autopilot for driving games. Local CV brain, Tesla-style vision, learn-by-calibration, whitelisted controls only."
 requires-python = ">=3.11"
 license = { text = "MIT" }
 
@@ -12,10 +11,10 @@ dependencies = [
     "pillow",
     "mss",
     "pynput",
-    "pyobjc-framework-Cocoa",
-    "pyobjc-framework-Quartz",
-    "pyobjc-framework-Vision",
-    "pyobjc-framework-CoreMedia",
+    "pyobjc-framework-Cocoa; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz; sys_platform == 'darwin'",
+    "pyobjc-framework-Vision; sys_platform == 'darwin'",
+    "pyobjc-framework-CoreMedia; sys_platform == 'darwin'",
     "torch",
     "torchvision",
     "ultralytics",

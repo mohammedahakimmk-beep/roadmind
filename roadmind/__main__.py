@@ -29,14 +29,11 @@ def _write_crash(exc: BaseException) -> str | None:
 def _show_crash_dialog(exc: BaseException, log_path: str | None) -> None:
     """Visible error instead of a silent quit. Fails safe."""
     try:
-        import subprocess
+        from roadmind import sys_utils
         msg = (f"RoadMind hit an error:\n\n{exc}\n\n"
-               "A crash log was saved to:\n" + (log_path or "~/Library/Application Support/RoadMind/crash.log") +
+               "A crash log was saved to:\n" + (log_path or sys_utils.DATA_DIR + "/crash.log") +
                "\nShare it with the project to get it fixed.")
-        subprocess.run(
-            ["osascript", "-e",
-             f'display alert "RoadMind error" message {msg!r} buttons {{"OK"}}'],
-            capture_output=True, timeout=8)
+        sys_utils.native_dialog("RoadMind error", msg, buttons=("OK",))
     except Exception:
         pass
 
@@ -62,13 +59,15 @@ def run() -> int:
 @safe
 def doctor() -> int:
     from roadmind import sys_utils
-    import Quartz
-    listen = getattr(Quartz, "CGPreflightListenEventAccess", None)
-    print("RoadMind doctor")
-    print(f"  Accessibility   : {'GRANTED' if sys_utils.is_accessibility_trusted() else 'MISSING'}")
-    print(f"  Screen capture  : {'GRANTED' if sys_utils.is_screen_capture_allowed() else 'MISSING'}")
-    im = "GRANTED" if (listen and listen()) else "optional (needed for ctrl+alt+Q hotkey)"
-    print(f"  Input monitoring: {im}")
+    import platform
+    print(f"RoadMind doctor ({platform.system()})")
+    if sys_utils.IS_MAC:
+        print(f"  Accessibility   : {'GRANTED' if sys_utils.is_accessibility_trusted() else 'MISSING'}")
+        print(f"  Screen capture  : {'GRANTED' if sys_utils.is_screen_capture_allowed() else 'MISSING'}")
+        im = "GRANTED" if sys_utils.input_monitoring_allowed() else "optional (needed for ctrl+alt+Q hotkey)"
+        print(f"  Input monitoring: {im}")
+    else:
+        print("  Permissions     : none required on Windows")
     print("  Windows found  :", len(sys_utils.list_windows(min_w=200, min_h=200)))
     print("  Updates        : auto-checked at startup (GitHub manifest), silent on failure")
     return 0
@@ -113,13 +112,11 @@ def selftest() -> int:
 def _native_prompt(msg: str) -> bool:
     """True when the user chose 'Update now'. Replaceable in tests."""
     try:
-        import subprocess
-        r = subprocess.run(
-            ["osascript", "-e",
-             f'display dialog {msg!r} buttons {{"Later", "Update now"}} '
-             f'default button "Update now" with title "RoadMind update"'],
-            capture_output=True, timeout=15)
-        return b"Update now" in (r.stdout or b"")
+        from roadmind import sys_utils
+        r = sys_utils.native_dialog("RoadMind update", msg,
+                                    buttons=("Later", "Update now"),
+                                    default="Update now")
+        return r == "Update now"
     except Exception:
         return False
 
@@ -137,8 +134,7 @@ def startup_update_check() -> bool:
         url = "https://github.com/mohammedahakimmk-beep/roadmind/releases"
     msg = (f"RoadMind v{latest} is available (you have v{cur}).\n\n"
            f"{notes}\n\n"
-           "Update now? The new version downloads and replaces this one\n"
-           "automatically - no reinstall needed.")
+           "Update now? The download page for the new build will open.")
     if not _native_prompt(msg):
         return False
     import webbrowser
@@ -154,8 +150,8 @@ def main() -> int:
     if "--help" in sys.argv or "-h" in sys.argv:
         print("RoadMind - open-source AI autopilot for driving games.\n"
               "  roadmind            launch the app (checks for updates first)\n"
-              "  roadmind --doctor   check macOS permissions + window detection\n"
-              "  roadmind --selftest headless smoke test (good for the bundled .app)\n"
+              "  roadmind --doctor   check permissions + window detection\n"
+              "  roadmind --selftest headless smoke test (good for a bundled build)\n"
               "  roadmind --noupdate skip the update prompt on launch")
         return 0
     if startup_update_check():
