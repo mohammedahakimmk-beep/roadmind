@@ -1,6 +1,6 @@
 {
-  "version": "0.2.0",
-  "notes": "RoadMind is now Windows-only. The macOS DMG is officially discontinued (last: v0.1.3); macOS TCC/Gatekeeper made shipping unreliable. Download the EXE below - no permissions required.",
-  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/tag/v0.2.0",
-  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.2.0/RoadMind-0.2.0-Windows.exe"
+  "version": "0.3.0",
+  "notes": "Whole-UI overhaul: curved pill buttons everywhere, a proper framed gameplay box with a live status bar, and fixed text contrast that is readable on every surface. Still Windows-only - the macOS DMG stays discontinued.",
+  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases",
+  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.3.0/RoadMind-0.3.0-Windows.exe"
 }

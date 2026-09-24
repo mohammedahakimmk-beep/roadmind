@@ -20,8 +20,9 @@ from .road_view import RoadView
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"RoadMind AI Autopilot")
-        self.geometry("1300x820")
+        self.title("RoadMind AI Autopilot")
+        self.geometry("1360x860")
+        self.minsize(1120, 760)
         self.configure(bg=T.BG_DEEP, padx=0, pady=0)
 
         self.cfg = C.RoadMindConfig()
@@ -68,71 +69,73 @@ class MainWindow(tk.Tk):
     def _build_ui(self):
         # ---- header ----
         head = T.frame(self, bg=T.BG_DEEP)
-        head.pack(fill="x", padx=14, pady=(10, 4))
-        tk.Label(head, text="ROADMIND", bg=T.BG_DEEP, fg=T.ACC,
-                 font=("SF Pro Display", 17, "bold")).pack(side="left")
-        tk.Label(head, text=f"  v{__version__}  \u00b7 open-source autopilot for driving games",
-                 bg=T.BG_DEEP, fg=T.FG_FAINT, font=T.UI_SM).pack(side="left", padx=(6, 18))
-        tk.Label(head, text="GAME", bg=T.BG_DEEP, fg=T.FG_FAINT,
-                 font=T.UI_SM_B).pack(side="left", padx=(0, 6))
-        self.win_combo = ttk.Combobox(head, width=40, state="readonly",
+        head.pack(fill="x", padx=16, pady=(12, 6))
+        T.label(head, text="ROADMIND", bg=T.BG_DEEP, fg=T.ACC,
+                font=T.BRAND).pack(side="left")
+        T.label(head, text=f"  v{__version__}  \u00b7 open-source autopilot for driving games",
+                bg=T.BG_DEEP, fg=T.FG_FAINT, font=T.UI_SM).pack(side="left", padx=(8, 20))
+        T.label(head, text="GAME", bg=T.BG_DEEP, fg=T.FG_DIM,
+                font=T.UI_SM_B).pack(side="left", padx=(0, 8))
+        self.win_combo = ttk.Combobox(head, width=38, state="readonly",
                                       font=T.UI, foreground=T.FG)
         self.win_combo.pack(side="left")
         self.win_combo.bind("<<ComboboxSelected>>", self._on_pick_window)
         T.button(head, text="\u21bb", command=self._refresh_windows, bg=T.PANEL2,
-                 active="#2e3b66", font=T.UI_B, padx=8, pady=3).pack(side="left", padx=6)
-        self._update_btn = tk.Button(head, bg=T.ACC, fg="#06121a", relief="flat", bd=0,
-                                     font=(T.UI[0], 9, "bold"), padx=12, pady=5,
-                                     cursor="pointinghand", activebackground=T.ACC,
-                                     activeforeground="#06121a")
+                 active=T.darken(T.PANEL2, 0.2), font=T.UI_B, padx=8, pady=3)\
+            .pack(side="left", padx=6)
+        self._update_btn = T.button(head, text="", command=None, bg=T.ACC,
+                                    fg=T.GO_DARK, font=(T.UI[0], 9, "bold"),
+                                    padx=12, pady=5)
         self._update_url = ""
-        tk.Label(head, text="ctrl+alt+Q = emergency stop", bg=T.BG_DEEP,
-                 fg="#4dd6ff", font=T.UI_SM_B).pack(side="right")
-        self._update_btn.lift()
+        T.label(head, text="ctrl+alt+Q = emergency stop", bg=T.BG_DEEP,
+                fg=T.ACC2, font=T.UI_SM_B).pack(side="right", padx=(0, 4), pady=4)
         self._update_btn.pack(side="right", padx=(0, 12))
 
         # ---- status chips (live permission readout) ----
         self.chips = StatusChips(self)
-        self.chips.pack(fill="x", padx=14, pady=(2, 6))
+        self.chips.pack(fill="x", padx=16, pady=(2, 8))
 
-        # ---- body ----
+        # ---- body: framed gameplay box on the left, panels on the right ----
         body = tk.PanedWindow(self, orient="horizontal", bg=T.BG_DEEP,
-                              sashwidth=8, bd=0, sashrelief="flat")
+                              sashwidth=10, bd=0, sashrelief="flat",
+                              background=T.BG_DEEP)
         body.pack(fill="both", expand=True, padx=12, pady=(2, 8))
-        self.view = RoadView(body)
-        body.add(self.view, minsize=520, stretch="always")
+        self.viewport = T.RoundedPanel(body, radius=18)
+        body.add(self.viewport, minsize=540, stretch="always")
+        self.view = RoadView(self.viewport)
+        self.view.pack(fill="both", expand=True, padx=self.viewport.pad,
+                       pady=self.viewport.pad)
 
-        right = T.frame(body, bg=T.BG)
-        body.add(right, minsize=330)
+        right = T.frame(body, bg=T.BG_DEEP)
+        body.add(right, minsize=340)
         self.mem = MemoryPanel(right)
         self.mem.pack(fill="x", pady=(0, 10))
         self.whitelist = WhitelistPanel(right, self.cfg)
         self.whitelist.pack(fill="both", expand=True)
 
-        # ---- control bar ----
+        # ---- control bar (curved action buttons) ----
         bar = T.frame(self, bg=T.BG_DEEP)
-        bar.pack(fill="x", padx=14, pady=(0, 12))
+        bar.pack(fill="x", padx=16, pady=(4, 14))
         self.btn_arm = T.button(bar, text="ARM AUTOPILOT", command=self.arm,
-                                bg="#0f8f60", active="#12b878", hover="#12b878",
-                                fg="#eafff3", font=(T.UI[0], 12, "bold"), padx=20, pady=9)
+                                bg="#0f9a63", fg="#062c1b", font=(T.UI[0], 12, "bold"),
+                                padx=22, pady=10)
         self.btn_arm.pack(side="left")
         self.btn_cal = T.button(bar, text="CALIBRATE", command=self._launch_calibration,
-                                bg=T.PANEL2, active="#2e3b66", fg=T.FG,
-                                font=T.UI_B, padx=16, pady=9)
-        self.btn_cal.pack(side="left", padx=8)
+                                bg=T.PANEL2, active=T.darken(T.PANEL2, 0.2), fg=T.FG,
+                                font=T.UI_B, padx=16, pady=10)
+        self.btn_cal.pack(side="left", padx=10)
         self.btn_disarm = T.button(bar, text="PAUSE", command=self.disarm,
-                                   bg="#b07a12", active="#c98e1a", fg="#1b1204",
-                                   font=T.UI_B, padx=16, pady=9)
-        self.btn_disarm.pack(side="left", padx=8)
+                                   bg=T.AMBER, fg=T.WARN_TEXT,
+                                   font=T.UI_B, padx=16, pady=10)
+        self.btn_disarm.pack(side="left", padx=10)
         self.btn_stop = T.button(bar, text="STOP ALL INPUT", command=self._hard_stop,
-                                 bg="#b32733", active="#d03846", fg="#ffe9ec",
-                                 font=T.UI_B, padx=16, pady=9)
-        self.btn_stop.pack(side="left", padx=(8, 14))
+                                 bg=T.RED, fg="#ffe6e9", font=T.UI_B, padx=16, pady=10)
+        self.btn_stop.pack(side="left", padx=(10, 16))
         self.progress = ttk.Progressbar(bar, length=120, mode="determinate")
         self._progress_on = False
         self.status = T.label(bar, "Select your game window to start vision.",
-                              font=T.UI_SM, fg=T.FG_DIM, bg=T.BG_DEEP)
-        self.status.pack(side="left", fill="x", expand=True)
+                              font=T.UI, fg=T.FG_DIM, bg=T.BG_DEEP)
+        self.status.pack(side="left", fill="x", expand=True, padx=(6, 0))
 
     # ---------------- updater ----------------
     def _start_update_check(self):
@@ -174,6 +177,7 @@ class MainWindow(tk.Tk):
         w = self._wins[idx]
         self.game_owner = w["owner"]
         self.game_pid = w.get("pid", 0)
+        self.view.game_label = w["owner"] + (f" - {w['name']}" if w["name"] else "")
         self.disarm()
         self.engine.stop()
         self.capture = capture.WindowCapture((w["x"], w["y"], w["w"], w["h"]))
