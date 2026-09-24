@@ -23,6 +23,9 @@ class WorldState:
     light_state: str = "unknown"
     leader: dict = field(default_factory=dict)   # normalized box of leader vehicle
     leader_distance: float = 0.0                  # 0..1 closeness (h*scale), bigger = closer
+    near_person: dict = field(default_factory=dict)   # box of a person on the road
+    person_distance: float = 0.0                  # 0..1 closeness of that person
+    object_stats: dict = field(default_factory=dict)  # label -> count this frame
     motion: float = 0.0                           # optical-flow px/frame on ground plane
     speed_est: float = 0.0                        # normalized motion->speed hint
     sign_boxes: list = field(default_factory=list)
@@ -135,11 +138,25 @@ class PerceptionEngine:
         if leader:
             self.state.leader = {"x": leader.x, "y": leader.y,
                                  "w": leader.w, "h": leader.h,
-                                 "label": leader.label, "id": leader.id}
+                                 "label": leader.label, "id": leader.id,
+                                 "est_kmh": leader.est_kmh}
             self.state.leader_distance = min(1.0, leader.h * 2.2)
         else:
             self.state.leader = {}
             self.state.leader_distance = 0.0
+
+        pers = self.trk.person()
+        if pers:
+            self.state.near_person = {"x": pers.x, "y": pers.y,
+                                      "w": pers.w, "h": pers.h,
+                                      "label": pers.label, "id": pers.id,
+                                      "est_kmh": pers.est_kmh}
+            self.state.person_distance = min(1.0, pers.h * 2.6)
+        else:
+            self.state.near_person = {}
+            self.state.person_distance = 0.0
+
+        self.state.object_stats = self.trk.stats()
 
         self._frame_counter += 1
 

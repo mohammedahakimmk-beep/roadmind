@@ -1,8 +1,8 @@
 name: release-windows
 
-# Builds the RoadMind Windows EXE on a Windows runner and attaches it to a
-# GitHub Release whenever you push a tag like v0.2.0:
-#   git tag v0.2.0 && git push origin v0.2.0
+# Builds the GameROBOT Windows EXE on a Windows runner and attaches it to a
+# GitHub Release whenever you push a tag like v0.5.0:
+#   git tag v0.5.0 && git push origin v0.5.0
 # Also rewrites version.json so in-app update checks point at the EXE.
 #
 # macOS DMG builds are OFFICIALLY DISCONTINUED (v0.1.3 was the last). macOS
@@ -47,25 +47,33 @@ jobs:
       - name: Smoke-test the bundle (headless selftest inside the exe)
         shell: pwsh
         run: |
-          & "dist\RoadMind.exe" --selftest | Tee-Object -Variable out
+          & "dist\GameROBOT.exe" --selftest | Tee-Object -Variable out
           if ("$out" -notmatch "SELFTEST OK") { exit 1 }
-          & "dist\RoadMind.exe" --doctor | Tee-Object -Variable out2
+          & "dist\GameROBOT.exe" --doctor | Tee-Object -Variable out2
 
       - name: Create or update release
         shell: pwsh
         run: |
           gh release create "$env:GITHUB_REF_NAME" `
-            --title "RoadMind $env:GITHUB_REF_NAME" `
-            --notes "RoadMind $env:GITHUB_REF_NAME - Windows EXE.
+            --title "GameROBOT $env:GITHUB_REF_NAME" `
+            --notes "GameROBOT $env:GITHUB_REF_NAME - Windows EXE. The smarter update.
 
           IMPORTANT: the macOS DMG is officially discontinued (v0.1.3 was the
           last one). macOS TCC/Gatekeeper made even a permission-clean build
-          unreliable, so RoadMind is now Windows-only.
+          unreliable, so GameROBOT is now Windows-only.
 
           What changed in this release:
-          - Windows one-file EXE (no install, no permissions to grant)
-          - Same local CV brain, Tesla-style overlay, calibration, whitelist
-          - Launch-gated updates (checks GitHub before the window opens)" 2>$null
+          - Smarter AI: tracks every object (cars, people, bikes, signs) with
+            a bounding box + EST-SPEED label above each box; brakes gently for
+            humans on the road; ramped throttle + smoothed steering; reads
+            speed-limit signs, lanes and traffic lights; leader + human
+            distance memory.
+          - Brand-new dashboard game menu: WELCOME BACK, DRIVER, live version
+            pill, target-game picker, permissions strip, vision-overlay
+            settings card and the pulsing IGNITE ENGINE button.
+          - Animated cockpit: scan-line vision, LIVE dot, game label, object
+            census, per-object boxes and est-speed chips.
+          - Rebranded from RoadMind to GameROBOT (same open-source autopilot)." 2>$null
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -73,8 +81,8 @@ jobs:
         shell: pwsh
         run: |
           $v = $env:GITHUB_REF_NAME.TrimStart("v")
-          Copy-Item dist\RoadMind.exe "RoadMind-$v-Windows.exe"
-          gh release upload "$env:GITHUB_REF_NAME" "RoadMind-$v-Windows.exe" --clobber
+          Copy-Item dist\GameROBOT.exe "GameROBOT-$v-Windows.exe"
+          gh release upload "$env:GITHUB_REF_NAME" "GameROBOT-$v-Windows.exe" --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -82,13 +90,13 @@ jobs:
         shell: pwsh
         run: |
           $v = $env:GITHUB_REF_NAME.TrimStart("v")
-          $notes = "RoadMind is now Windows-only. The macOS DMG is officially discontinued (last: v0.1.3); macOS TCC/Gatekeeper made shipping unreliable. Download the EXE below - no permissions required."
+          $notes = "GameROBOT rebrand + the 10x-smarter update: tracks every object with EST-SPEED labels, brakes for humans, ramped throttle, speed-limit reader, dashboard game menu with IGNITE ENGINE. Windows-only; the macOS DMG is discontinued (last: v0.1.3)."
           @"
           {
             "version": "$v",
             "notes": "$notes",
             "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/tag/$env:GITHUB_REF_NAME",
-            "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/$env:GITHUB_REF_NAME/RoadMind-$v-Windows.exe"
+            "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/$env:GITHUB_REF_NAME/GameROBOT-$v-Windows.exe"
           }
           "@ | Set-Content -Encoding UTF8 version.json
 

@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec: RoadMind Windows one-file EXE.
-# Builds a single self-contained RoadMind.exe (GUI, no console).
+# PyInstaller spec: GameROBOT Windows one-file EXE.
+# Builds a single self-contained GameROBOT.exe (GUI, no console).
 
 import os
 
@@ -39,7 +39,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='RoadMind',
+    name='GameROBOT',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -1,4 +1,4 @@
-"""RoadMind right-hand panels + live status chips (Tk, themed)."""
+"""GameROBOT right-hand panels + live status chips (Tk, themed)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from .. import sys_utils
 from . import theme as T
 
 PERM_HINT = (
-    "What RoadMind needs:\n"
+    "What GameROBOT needs:\n"
     "\n"
     "  Windows:\n"
     "    - nothing at all. No permissions, no admin, no install.\n"
@@ -20,13 +20,13 @@ PERM_HINT = (
     "    - Input Monitoring -> needed for the ctrl+alt+Q hotkey\n"
     "\n"
     "If a macOS chip stays off after you approved it, macOS is glitching on "
-    "the approval. Fix (applies to the app you launch RoadMind with - your "
-    "terminal, or RoadMind.app):\n"
+    "the approval. Fix (applies to the app you launch GameROBOT with - your "
+    "terminal, or GameROBOT.app):\n"
     "\n"
     "1. System Settings -> Privacy & Security -> the permission name\n"
     "2. Switch the app OFF, wait, switch it back ON\n"
     "3. Quit that app completely and relaunch it\n"
-    "4. Start RoadMind again - the chips flip green\n"
+    "4. Start GameROBOT again - the chips flip green\n"
 )
 
 
@@ -191,9 +191,17 @@ class MemoryPanel(tk.Frame):
         self._v["speed_limit"].configure(text=(str(lim) if lim else "\u2014") + tail)
         self._v["light"].configure(text=st.light_state or "unknown")
         self._v["leader"].configure(
-            text=(f"{st.leader.get('label', '?')} @{st.leader_distance:.0%}")
+            text=(f"{st.leader.get('label', '?')} @{st.leader_distance:.0%}"
+                  + (f" est {int(st.leader['est_kmh'])}" if st.leader.get("est_kmh") else ""))
             if st.leader else "clear road")
-        self._v["tracks"].configure(text=f"{len(st.tracks)} objects")
+        stats = st.object_stats or {}
+        if stats:
+            cen = " \u00b7 ".join(f"{k.upper()}x{v}"
+                                  for k, v in sorted(stats.items(),
+                                                     key=lambda kv: -kv[1]))
+        else:
+            cen = "road clear"
+        self._v["tracks"].configure(text=f"{len(st.tracks)} objs \u00b7 {cen}")
         self._v["motion"].configure(text=f"{st.motion:.3f}px  {st.speed_est:.0%}")
         self._v["fps"].configure(text=f"{st.fps:.0f} fps")
         msgs = []

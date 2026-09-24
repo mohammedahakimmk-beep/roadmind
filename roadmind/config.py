@@ -39,6 +39,13 @@ DEFAULT_BINDINGS = {
 
 DEFAULT_LIMITS = {"target_speed": 50.0, "max_speed": 200.0, "max_steer": 1.0}
 
+DEFAULT_UI = {
+    "show_boxes": True,     # draw bounding boxes on the AI vision overlay
+    "show_speed": True,     # draw est. speed labels above cars/humans
+    "show_lanes": True,     # draw lane lines + projected path
+    "show_hud": True,       # speed-limit dial + thinking ribbon
+}
+
 
 @dataclass
 class CalibrationCurve:
@@ -53,6 +60,7 @@ class Profile:
     bindings: dict = field(default_factory=lambda: dict(DEFAULT_BINDINGS))
     limits: dict = field(default_factory=lambda: dict(DEFAULT_LIMITS))
     calibration: dict = field(default_factory=lambda: {a: asdict(CalibrationCurve()) for a in ACTIONS})
+    ui: dict = field(default_factory=lambda: dict(DEFAULT_UI))
 
 
 class RoadMindConfig:
@@ -73,6 +81,9 @@ class RoadMindConfig:
                     p.bindings.update({k: v for k, v in data["bindings"].items() if k in ACTIONS})
                 if isinstance(data.get("limits"), dict):
                     p.limits.update(data["limits"])
+                if isinstance(data.get("ui"), dict):
+                    p.ui.update({k: v for k, v in data["ui"].items()
+                                 if k in DEFAULT_UI})
                 if isinstance(data.get("calibration"), dict):
                     for a in ACTIONS:
                         c = data["calibration"].get(a, {})
@@ -90,6 +101,7 @@ class RoadMindConfig:
             "actions": self.profile.actions,
             "bindings": self.profile.bindings,
             "limits": self.profile.limits,
+            "ui": self.profile.ui,
             "calibration": {a: asdict(c) if not isinstance(c, dict) else c
                             for a, c in self.profile.calibration.items()},
         }

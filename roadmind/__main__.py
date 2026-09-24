@@ -30,10 +30,10 @@ def _show_crash_dialog(exc: BaseException, log_path: str | None) -> None:
     """Visible error instead of a silent quit. Fails safe."""
     try:
         from roadmind import sys_utils
-        msg = (f"RoadMind hit an error:\n\n{exc}\n\n"
+        msg = (f"GameROBOT hit an error:\n\n{exc}\n\n"
                "A crash log was saved to:\n" + (log_path or sys_utils.DATA_DIR + "/crash.log") +
                "\nShare it with the project to get it fixed.")
-        sys_utils.native_dialog("RoadMind error", msg, buttons=("OK",))
+        sys_utils.native_dialog("GameROBOT error", msg, buttons=("OK",))
     except Exception:
         pass
 
@@ -60,7 +60,7 @@ def run() -> int:
 def doctor() -> int:
     from roadmind import sys_utils
     import platform
-    print(f"RoadMind doctor ({platform.system()})")
+    print(f"GameROBOT doctor ({platform.system()})")
     if sys_utils.IS_MAC:
         print(f"  Accessibility   : {'GRANTED' if sys_utils.is_accessibility_trusted() else 'MISSING'}")
         print(f"  Screen capture  : {'GRANTED' if sys_utils.is_screen_capture_allowed() else 'MISSING'}")
@@ -80,7 +80,7 @@ def selftest() -> int:
     from roadmind.perception import detector, pipeline
     from roadmind.planner.planner import Planner
 
-    print("RoadMind selftest")
+    print("GameROBOT selftest")
     d = detector.Detector()
     print(f"  YOLO {d.model_name}: {'OK (%s)' % d.device if d.ready else 'FAILED'}")
     if not d.ready:
@@ -113,7 +113,7 @@ def _native_prompt(msg: str) -> bool:
     """True when the user chose 'Update now'. Replaceable in tests."""
     try:
         from roadmind import sys_utils
-        r = sys_utils.native_dialog("RoadMind update", msg,
+        r = sys_utils.native_dialog("GameROBOT update", msg,
                                     buttons=("Later", "Update now"),
                                     default="Update now")
         return r == "Update now"
@@ -132,7 +132,7 @@ def startup_update_check() -> bool:
         return False
     if not url:
         url = "https://github.com/mohammedahakimmk-beep/roadmind/releases"
-    msg = (f"RoadMind v{latest} is available (you have v{cur}).\n\n"
+    msg = (f"GameROBOT v{latest} is available (you have v{cur}).\n\n"
            f"{notes}\n\n"
            "Update now? The download page for the new build will open.")
     if not _native_prompt(msg):
@@ -148,7 +148,7 @@ def main() -> int:
     if "--doctor" in sys.argv:
         return doctor()
     if "--help" in sys.argv or "-h" in sys.argv:
-        print("RoadMind - open-source AI autopilot for driving games.\n"
+        print("GameROBOT - open-source AI autopilot for driving games.\n"
               "  roadmind            launch the app (checks for updates first)\n"
               "  roadmind --doctor   check permissions + window detection\n"
               "  roadmind --selftest headless smoke test (good for a bundled build)\n"

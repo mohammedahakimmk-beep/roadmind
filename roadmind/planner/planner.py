@@ -30,6 +30,8 @@ class Planner:
         self._blinker_l = False
         self._blinker_r = False
         self._last_goal = None
+        self._throttle = 0.0      # smoothed target throttle (ramps, not snaps)
+        self._steer = 0.0         # smoothed steering (avoids jitter)
 
     def plan(self, ws, allowed: set[str]) -> Drivetrain:
         d = Drivetrain()
@@ -45,15 +47,23 @@ class Planner:
         if "brake" in allowed and (ws.has_red_light() or ws.has_stop_sign()):
             d.brake = 1.0
             d.throttle = 0.0
+            self._throttle = 0.0
             d.mode = "stopped"
             d.reason.append("red light / stop sign ahead")
+        elif "brake" in allowed and ws.near_person and ws.person_distance > 0.34:
+            d.brake = min(1.0, (ws.person_distance - 0.20) * 1.3)
+            d.throttle = 0.0
+            self._throttle = 0.0
+            d.mode = "mindful"
+            d.reason.append(f"human on the road ahead {ws.person_distance:.0%}")
         elif "brake" in allowed and ws.leader and ws.leader_distance > 0.55:
             d.brake = min(1.0, (ws.leader_distance - 0.45) * 1.4)
             d.throttle = 0.0
+            self._throttle = 0.0
             d.mode = "hard_follow"
             d.reason.append(f"vehicle close ahead ({ws.leader['label']})")
         else:
-            # --- steering (lane keep) ---
+            # --- steering (lane keep, smoothed) ---
             steer = 0.0
             if "steer_left" in allowed or "steer_right" in allowed:
                 offset = ws.lanes.get("offset", 0.0)
@@ -67,26 +77,43 @@ class Planner:
                     steer = 0.0
                 if steer > 0 and "steer_right" not in allowed:
                     steer = 0.0
-            d.steer = steer
+            self._steer = self._steer * 0.55 + steer * 0.45
+            d.steer = float(np.clip(self._steer, -1.0, 1.0))
 
-            # --- speed / throttle ---
+            # --- speed / throttle (ramped, so the car feels smooth) ---
+            goal = 1.0 if not goal_speed else 0.92
             if "throttle" in allowed and ws.speed_est < 0.65 and goal_speed:
-                d.throttle = min(1.0, 0.85 if ws.leader_distance < 0.2 else 1.0)
+                target = 1.0 if ws.leader_distance < 0.2 else goal
+                if ws.near_person and ws.person_distance > 0.15:
+                    target = min(target, 0.45)
+                self._throttle = min(target, self._throttle + 0.22)
+                d.throttle = self._throttle
                 d.mode = "cruise" if ws.lanes.get("valid") else "lane_search"
                 d.reason.append(f"cruising toward {int(goal_speed)} km/h" +
                                 (" (speed limit)" if lim else ""))
             elif "brake" in allowed and ws.speed_est > 0.97:
+                self._throttle = max(0.0, self._throttle - 0.3)
                 d.brake = 0.5
                 d.mode = "overspeed"
                 d.reason.append("at top of measured range, easing off")
+            else:
+                self._throttle = max(0.0, self._throttle - 0.3)
 
             if "brake" in allowed and ws.leader and 0.3 < ws.leader_distance <= 0.55:
                 d.brake = min(1.0, (ws.leader_distance - 0.25) * 1.2)
-                d.throttle *= 0.35
+                self._throttle *= 0.35
+                d.throttle = self._throttle
                 d.mode = "follow"
                 d.reason.append(f"following {ws.leader['label']} at safe gap")
 
-            if d.throttle <= 0.05 and d.brake <= 0.05:
+            if ws.near_person and 0.12 < ws.person_distance <= 0.34 and "brake" in allowed:
+                d.brake = max(d.brake, min(0.7, (ws.person_distance - 0.05) * 1.0))
+                self._throttle = min(self._throttle, 0.25)
+                d.throttle = self._throttle
+                d.mode = "mindful"
+                d.reason.append("human ahead - cautious speed")
+
+            if d.throttle <= 0.08 and d.brake <= 0.05:
                 d.mode = "coasting"
 
         # --- signals + honk ---

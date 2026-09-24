@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.5.0 — GameROBOT rebrand + the 10x-smarter update
+
+**The project is now GameROBOT** (the shipped EXE is `GameROBOT-0.5.0-Windows.exe`).
+
+### Smarter AI
+- **Every object understood, boxed and labelled.** Cars, people, trucks, buses,
+  bikes, traffic lights and stop signs get a bounding box with a label chip
+  above it: `CAR · EST SPEED: 60`, `HUMAN · EST SPEED: 6`. Per-object relative
+  speed is measured with a projective world model (tracked over ~0.5s windows).
+- **Human-aware driving.** People on the road ahead trigger gentle braking plus
+  a cautious speed, with a "mindful" mode in the thinking log.
+- **Smoother driving.** Throttle ramps up/down instead of snapping; steering is
+  low-passed; leader picker now really picks the *closest* vehicle ahead.
+- Live object census (e.g. `2 objs · CARx1 · PERSONx1`) in the telemetry panel;
+  leader/human est speeds surface in the UI.
+
+### New dashboard game menu
+- Full-bleed animated menu: drifting particles, breathing glow title,
+  rotating taglines, "WELCOME BACK, DRIVER".
+- Live version pill (`v0.5.0 · Windows Edition · opensource`), target-game
+  picker + refresh, permissions strip, vision-overlay settings card (boxes /
+  est-speed / lanes / HUD toggles, target & max speed), and the big pulsing
+  **▶ IGNITE ENGINE** button — no boring "START". Fade-flash transition into
+  the cockpit.
+
+### Alive cockpit
+- Scan-line sweeping the vision view, pulsing LIVE dot, object-count +
+  speed-limit readout on the top strip, animated ARM dots, per-object boxes
+  with est-speed chips, person head-glow marker, motion streaks.
+- Renamed brand, header ("GameROBOT"), viewport bottom strip, perm-help copy,
+  ARM button ("ENGAGE AUTOPILOT").
+
+### Under the hood
+- Config gains `ui` preferences (persisted overlays toggles).
+- Windows EXE renamed; release pipeline, manifest URL and update checks point
+  at `GameROBOT-<v>-Windows.exe`.
+- macOS DMG stays discontinued (v0.1.3 was the last); sources remain buildable.
+
 ## v0.4.0 — the UI overhaul, properly numbered
 
 Renumbered release of the v0.3.0 UI work so the new build is clearly newer

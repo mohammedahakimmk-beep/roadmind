@@ -1,4 +1,4 @@
-"""RoadMind UI theme: a small design system for the Tk interface.
+"""GameROBOT UI theme: a small design system for the Tk interface.
 
 Tk has no CSS, so this module is the stylesheet: palette, fonts, rounded
 "pill" buttons, rounded panels and widget factories. Everything the user
@@ -85,6 +85,24 @@ def round_rect(c, x1, y1, x2, y2, r, **kw):
     return c.create_polygon(pts, smooth=True, splinesteps=24, **kw)
 
 
+def draw_gradient(canvas, x1, y1, x2, y2, top, bottom, steps=36):
+    """Fill a rect with a smooth vertical gradient (Tk is too limited for real
+    gradients, so we fake it with stacked strips)."""
+    h = (y2 - y1) / float(steps)
+    for i in range(steps):
+        col = mix(top, bottom, i / max(1, steps - 1))
+        yy = y1 + i * h
+        canvas.create_rectangle(x1, yy - 1, x2, yy + h + 1,
+                                fill=col, outline="")
+
+
+def pulse_alpha(t: float, lo: float = 0.25, hi: float = 1.0) -> float:
+    """0..1 slow sine wave for glow/pulse effects. `t` is any monotonic value
+    (seconds or tick counters both work)."""
+    import math
+    return lo + (hi - lo) * (0.5 + 0.5 * math.sin(t * 2.4))
+
+
 # ---- widgets ------------------------------------------------------------------
 class PillButton(tk.Canvas):
     """Fully rounded (curved) button: canvas-drawn, with hover and press states."""
@@ -110,6 +128,10 @@ class PillButton(tk.Canvas):
         self._state = "normal"
         self._inside = False
         self._down = False
+        self._pulse_on = False
+        self._pulse_color = None
+        self._pulse_t = 0
+        self._pulse_after = None
         self.configure(cursor="pointinghand")
         self.bind("<Enter>", lambda e: self._hover_in())
         self.bind("<Leave>", lambda e: self._hover_out())
@@ -132,6 +154,10 @@ class PillButton(tk.Canvas):
 
     # -- drawing --
     def _redraw(self):
+        try:
+            self.winfo_ismapped()
+        except tk.TclError:
+            return
         f = tkfont.Font(family=self._font[0], size=self._font[1],
                         weight=self._font[2] if len(self._font) > 2 else "normal")
         tw = f.measure(self._text)
@@ -144,9 +170,44 @@ class PillButton(tk.Canvas):
         self.delete("all")
         r = self._radius or (h // 2)
         col = self._cur_bg()
+        if self._pulse_on:
+            # pulsing "energy" ring behind the button (breaks the flat look)
+            import math
+            a = 0.5 + 0.5 * math.sin(self._pulse_t * 0.55)
+            ringc = mix(self._pulse_color, self.cget("bg"), 1.0 - (0.15 + 0.5 * a))
+            grow = 3 + int(4 * a)
+            round_rect(self, 1 - grow, 1 - grow, w - 1 + grow, h - 1 + grow,
+                       r + grow, outline=ringc, width=2, fill="")
         round_rect(self, 1, 1, w - 1, h - 1, r, fill=col, outline=col)
         tcol = self._fg if self._enabled() else self._d_fg
         self.create_text(w / 2, h / 2, text=self._text, fill=tcol, font=self._font)
+
+    # -- events --
+    def set_pulse(self, on: bool, color=None):
+        """Toggle a soft animated glow ring (for make-it-feel-alive buttons)."""
+        self._pulse_on = bool(on)
+        if color:
+            self._pulse_color = color
+        if self._pulse_on:
+            if self._pulse_after is None:
+                self._pulse_t = 0
+                self._pulse_loop()
+        elif self._pulse_after is not None:
+            self.after_cancel(self._pulse_after)
+            self._pulse_after = None
+            self._redraw()
+
+    def _pulse_loop(self):
+        if not self._pulse_on:
+            self._pulse_after = None
+            self._redraw()
+            return
+        self._pulse_t += 1
+        self._redraw()
+        try:
+            self._pulse_after = self.after(50, self._pulse_loop)
+        except tk.TclError:
+            self._pulse_after = None
 
     # -- events --
     def _hover_in(self):

@@ -1,4 +1,4 @@
-"""RoadMind package entry."""
+"""GameROBOT package entry."""
 
 from .__main__ import main
 

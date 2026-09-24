@@ -1,4 +1,8 @@
-"""Lightweight IoU tracker + memory (speed limit latch, light state, leader, motion)."""
+"""Lightweight IoU tracker + memory (speed limit latch, light state, leader, motion).
+
+Also estimates each tracked object's relative approach speed with a simple
+projective world model, so the UI can label "CAR · EST 60" above the box.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +11,18 @@ from collections import deque
 from dataclasses import dataclass, field
 
 import numpy as np
+
+# Projective pinhole-ish model: distance in metres from the object's on-ground
+# position. horizon_y is where the road goes to the vanishing point (matched to
+# the lane detector's ROI); DIST_K is tuned so a car near the bottom of the
+# frame reads ~5-10 m away. Play-pretty estimates, not survey-grade.
+HORIZON_Y = 0.42
+DIST_K = 6.6
+
+
+def _to_dist(y_bottom: float) -> float:
+    y = max(HORIZON_Y + 0.02, min(0.99, float(y_bottom)))
+    return max(1.0, min(80.0, DIST_K / (y - HORIZON_Y)))
 
 
 @dataclass
@@ -21,6 +37,30 @@ class Track:
     conf: float = 0.0
     age: int = 0
     last_seen: float = 0.0
+    hist: deque = field(default_factory=lambda: deque(maxlen=45))
+    vx: float = 0.0          # normalized lateral motion / s (smoothed)
+    vy: float = 0.0          # normalized vertical motion / s (smoothed)
+    speed: float = 0.0       # 0..1 normalized approach speed
+    est_kmh: float = 0.0     # est. relative approach speed (play units)
+    moving: bool = False     # "fast enough to be a moving object"
+
+    # -- display --
+    @property
+    def dist(self) -> float:
+        """Approx distance (m) of the object ahead of us."""
+        return _to_dist(self.y + self.h / 2)
+
+    @property
+    def x1(self): return self.x - self.w / 2
+
+    @property
+    def x2(self): return self.x + self.w / 2
+
+    @property
+    def y1(self): return self.y - self.h / 2
+
+    @property
+    def y2(self): return self.y + self.h / 2
 
 
 def _iou(a: dict, b: dict) -> float:
@@ -83,6 +123,8 @@ class Tracker:
                     best, biou = t, v
             if best and biou >= self.iou_thresh:
                 best.x, best.y, best.w, best.h = d["x"], d["y"], d["w"], d["h"]
+                best.cls = d["cls"]
+                best.label = d["label"]
                 best.conf = d["conf"]
                 best.age = 0
                 best.last_seen = now
@@ -93,14 +135,57 @@ class Tracker:
                                          age=0, last_seen=now))
                 self._next_id += 1
         self.tracks = [t for t in self.tracks if (now - t.last_seen) < self.max_age]
+        for t in self.tracks:
+            self._estimate_speed(t, now)
         return self.tracks
 
+    # ------------------------------------------------------------------ speeds
+    def _estimate_speed(self, t: Track, now: float):
+        """Append this frame to the object's history, then estimate approach
+        speed from the projective distance change over a ~0.5s window."""
+        tb = t.y + t.h / 2                   # on-ground point
+        t.hist.append((now, t.x, tb))
+        while t.hist and now - t.hist[0][0] > 0.55:
+            t.hist.popleft()
+        if len(t.hist) < 3:
+            return
+        t0, x0, y0 = t.hist[0]
+        last = t.hist[-1]
+        dt = max(1e-3, last[0] - t0)
+        # per-second normalized motion (for instabox movement display)
+        vx = (last[1] - x0) / dt
+        vy = (last[2] - y0) / dt
+        t.vx = vx if t.vx == 0 else t.vx * 0.6 + vx * 0.4
+        t.vy = vy if t.vy == 0 else t.vy * 0.6 + vy * 0.4
+        # projective relative speed
+        v = (_to_dist(last[2]) - _to_dist(y0)) / dt * 3.6  # m/s -> km/h
+        v = max(-40.0, min(220.0, v))
+        t.est_kmh = v * 0.7 + (t.est_kmh if t.est_kmh else v) * 0.3
+        t.speed = round(float(min(1.0, max(0.0, abs(t.est_kmh) / 90.0))), 3)
+        t.moving = abs(t.est_kmh) > 6.0
+
     def leader(self) -> Track | None:
-        """Closest vehicle ahead (largest box, below/center of frame)."""
-        veh = [t for t in self.tracks if t.cls in {2, 3, 5, 7}]
-        if not veh:
+        """Closest vehicle ahead: largest box whose bottom is in the lower half
+        (i.e. on the road ahead of us), falling back to the largest vehicle."""
+        near = [t for t in self.tracks if t.cls in {2, 3, 5, 7} and t.y < 0.8]
+        if not near:
             return None
-        return min(veh, key=lambda t: t.h if t.y < 0.8 else 1.0)
+        near.sort(key=lambda t: t.h, reverse=True)
+        return near[0]
+
+    def person(self) -> Track | None:
+        """Most threatening person on the road ahead (largest, on-ground)."""
+        ppl = [t for t in self.tracks if t.cls == 0 and t.y < 0.85]
+        if not ppl:
+            return None
+        return max(ppl, key=lambda t: t.h)
+
+    def stats(self) -> dict:
+        """Simple object census: label -> count (useful for the telemetry UI)."""
+        out = {}
+        for t in self.tracks:
+            out[t.label] = out.get(t.label, 0) + 1
+        return out
 
 
 def optical_flow_motion(frame_bgr: np.ndarray, prev_gray,

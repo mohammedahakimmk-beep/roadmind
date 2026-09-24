@@ -1,9 +1,9 @@
-# RoadMind
+# GameROBOT
 
 ## Official announcement — the macOS DMG is discontinued
 
-**RoadMind is now a Windows app. The macOS DMG is officially discontinued
-(v0.1.3 was the last macOS build).**
+**GameROBOT (formerly RoadMind) is now a Windows app. The macOS DMG is
+officially discontinued (v0.1.3 was the last macOS build).**
 
 Why? macOS's TCC/Gatekeeper quarantine makes *even a permission-clean build*
 unreliable — every rebuilt bundle is a "new app" to macOS, so the Screen
@@ -18,27 +18,43 @@ Download the current Windows EXE from the
 
 Open-source **AI autopilot for driving games**. It watches the game window on
 your screen with a **fully-local computer-vision brain**, shows a
-**Tesla-style 3D vision overlay** of what it sees and what it's thinking,
-remembers the road (speed limits, traffic lights, vehicles), and drives
-through **only the controls you whitelist**.
+**Tesla-style vision overlay** of exactly what the AI sees and understands —
+with a **bounding box and an EST-SPEED label above every car, person, bike
+and sign** — remembers the road (speed limits, traffic lights, vehicles),
+and drives through **only the controls you whitelist**.
 
 No cloud. No teaching per game. Works on any game window you point it at.
 
+It launches from a **game-menu dashboard**: WELCOME BACK, DRIVER, your current
+version, settings, and one big **IGNITE ENGINE** button that drops you into the
+cockpit.
+
 ## Features
 
+- **Game-menu dashboard** — animated launcher with your version, target-game
+  picker, permissions strip, vision-overlay settings and a pulsing
+  IGNITE ENGINE button.
+- **Smarter AI (v0.5.0)** — every object the YOLO brain understands gets a
+  bounding box + label chip: `CAR · EST SPEED: 60`, `HUMAN · EST SPEED: 6`…
+  per-object relative speed is measured from a projective world model; the bot
+  **brakes gently when a human is on the road**, ramps throttle smoothly,
+  smooths steering, reads speed-limit signs + traffic lights, tracks its
+  leader and keeps a safe gap.
 - **Whitelist gate** — before every drive you choose exactly which controls exit
   (throttle, brake, steering, blinkers, honk, ABS…). Unchecked → the AI is *blocked*
   from using that action.
-- **Fully-automatic calibration** — RoadMind probes each whitelisted key
+- **Fully-automatic calibration** — GameROBOT probes each whitelisted key
   (holds it, measures the on-screen response with optical flow) and records
   latency + gain. Re-run for any game.
 - **Local CV brain** — YOLO11n (vehicles / people / traffic lights / stop signs),
   circle-sign + OCR **speed-limit reader**, lane detection, sparse optical flow
-  motion/speed estimate — accelerated on GPU when available.
-- **Memory** — latches speed limits, traffic light state, leader-vehicle gaps,
-  motion history, and shows everything in the telemetry panel.
-- **Tesla-style view** — the live game frame plus a projected 3D road, lane lines,
-  wireframe vehicles, sign marks, speed-limit dial, and the AI's current intent.
+  motion/speed estimate, per-object tracking with speed estimation — accelerated
+  on GPU when available.
+- **Memory & telemetry** — latches speed limits, traffic light state,
+  leader-vehicle gaps, human alerts, motion history, and a live object census.
+- **Animated Tesla-style view** — dimmed game frame + projected road, lane lines,
+  object boxes with labels, a moving scan line, a live badge, the speed-limit
+  dial and the AI's current intent.
 - **Safety** — `ctrl+alt+Q` global kill, auto-pause when the game loses focus,
   release-everything on stop, speed clamps.
 - **Launch-gated updates** — on every start the app checks GitHub for a newer
@@ -46,7 +62,7 @@ No cloud. No teaching per game. Works on any game window you point it at.
 
 ## Install (Windows)
 
-1. Download **`RoadMind-<version>-Windows.exe`** from the
+1. Download **`GameROBOT-<version>-Windows.exe`** from the
    [releases page](https://github.com/mohammedahakimmk-beep/roadmind/releases).
 2. Run it. No install, no permissions, no admin.
 3. Windows SmartScreen may warn about an unsigned EXE → *More info → Run anyway*
@@ -56,10 +72,11 @@ The updater nags you automatically when a newer version is released.
 
 ## Use
 
-1. Pick your game window from the dropdown (top bar).
-2. Whitelist exactly the controls the AI may use (right panel).
-3. **CALIBRATE** — park the car somewhere safe; RoadMind auto-probes each key.
-4. **ARM AUTOPILOT** — watch the Tesla-style vision and its thinking in real time.
+1. **Dashboard** — pick your game window, tweak the vision overlays, hit
+   **IGNITE ENGINE**.
+2. **Cockpit** — whitelist exactly the controls the AI may use (right panel).
+3. **CALIBRATE** — park the car somewhere safe; GameROBOT auto-probes each key.
+4. **ENGAGE AUTOPILOT** — watch the boxes, EST speeds and its thinking live.
 5. `ctrl+alt+Q` anywhere to kill everything instantly.
 
 ## Install / run (dev)
@@ -79,10 +96,10 @@ macOS binaries are released.
 
 ## Packaging
 
-`packaging/windows.spec` builds the one-file EXE with PyInstaller; GitHub
-Actions (`release.yml`) does it automatically for every `v*` tag and rewrites
-the version manifest. macOS packaging (`packaging/build_dmg.sh`) is deprecated
-and unmaintained.
+`packaging/windows.spec` builds the one-file `GameROBOT.exe` with PyInstaller;
+GitHub Actions (`release.yml`) does it automatically for every `v*` tag and
+rewrites the version manifest. macOS packaging (`packaging/build_dmg.sh`) is
+deprecated and unmaintained.
 
 ## License
 
