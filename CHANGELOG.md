@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.4.0 — the UI overhaul, properly numbered
+
+Renumbered release of the v0.3.0 UI work so the new build is clearly newer
+than what you had. Same changes, one number higher:
+
+- **Curved buttons.** Every button is now a rounded "pill" (canvas-drawn with
+  hover + press states): ARM / CALIBRATE / PAUSE / STOP, the game refresh,
+  the update banner, status chips, whitelist save.
+- **The gameplay is now a proper box.** The live view sits inside a framed,
+  rounded bezel (a dark "screen") with a crisp inner border, a LIVE/STANDBY
+  badge, the game name and a bottom status strip — real product chrome with
+  panels laid out around it.
+- **Colour contrast fixed.** Unreadable dark-on-dark text is gone: a brighter,
+  contrast-checked palette, readable text on green, amber and red pills.
+- **Platform fonts.** Segoe UI on Windows / SF Pro on macOS; Consolas / Menlo.
+- **Scrollable whitelist.** All 13 actions fit regardless of window height.
+- macOS DMG remains discontinued/Windows-only.
+
 ## v0.3.0 — whole-UI overhaul ("finally looks like a real app")
 
 - **Curved buttons.** Every button is now a rounded "pill" (canvas-drawn with
