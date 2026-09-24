@@ -36,6 +36,22 @@ def is_newer(candidate: str, current: str) -> bool:
         return False
 
 
+def check_once(timeout: float = 6.0):
+    """Blocking manifest check. Returns (latest, url, notes, newer_exists: bool).
+
+    Fails silent on any network error so the app never hangs on launch.
+    """
+    try:
+        with urllib.request.urlopen(MANIFEST_URL, timeout=timeout) as r:
+            data = json.load(r)
+    except Exception:
+        return (__version__, "", "", False)
+    latest = str(data.get("version", ""))
+    url = str(data.get("url", ""))
+    notes = str(data.get("notes", ""))
+    return (latest, url, notes, is_newer(latest, __version__))
+
+
 class Updater:
     """Checks for a newer release. Calls on_result(version, url, notes)."""
 
@@ -48,16 +64,9 @@ class Updater:
         return True
 
     def _check(self):
-        try:
-            with urllib.request.urlopen(self.manifest_url, timeout=8) as r:
-                data = json.load(r)
-        except Exception:
-            return
-        latest = str(data.get("version", ""))
-        if is_newer(latest, __version__):
-            self.on_result(latest,
-                           str(data.get("url", "")),
-                           str(data.get("notes", "")))
+        latest, url, notes, newer = check_once()
+        if newer:
+            self.on_result(latest, url, notes)
 
 
 def open_release(url: str):

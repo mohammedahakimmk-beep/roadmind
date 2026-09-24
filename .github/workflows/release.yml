@@ -30,6 +30,9 @@ jobs:
           .venv/bin/python -m pip install pyinstaller
           .venv/bin/python -m pip install -e .
 
+      - name: Fetch YOLO weights (bundled into the app)
+        run: curl -sSL -o yolo11n.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt
+
       - name: Build DMG
         run: |
           export VERSION="${GITHUB_REF_NAME#v}"

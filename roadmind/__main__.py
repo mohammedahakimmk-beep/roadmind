@@ -110,6 +110,42 @@ def selftest() -> int:
     return 0
 
 
+def _native_prompt(msg: str) -> bool:
+    """True when the user chose 'Update now'. Replaceable in tests."""
+    try:
+        import subprocess
+        r = subprocess.run(
+            ["osascript", "-e",
+             f'display dialog {msg!r} buttons {{"Later", "Update now"}} '
+             f'default button "Update now" with title "RoadMind update"'],
+            capture_output=True, timeout=15)
+        return b"Update now" in (r.stdout or b"")
+    except Exception:
+        return False
+
+
+def startup_update_check() -> bool:
+    """Run BEFORE the app opens. If a newer version exists, ask the user to
+    update first; returns True when we should quit and let them update."""
+    from roadmind import __version__ as cur, updater
+    if "--noupdate" in sys.argv:
+        return False
+    latest, url, notes, newer = updater.check_once(timeout=6.0)
+    if not newer:
+        return False
+    if not url:
+        url = "https://github.com/mohammedahakimmk-beep/roadmind/releases"
+    msg = (f"RoadMind v{latest} is available (you have v{cur}).\n\n"
+           f"{notes}\n\n"
+           "Update now? The new version downloads and replaces this one\n"
+           "automatically - no reinstall needed.")
+    if not _native_prompt(msg):
+        return False
+    import webbrowser
+    webbrowser.open(url)
+    return True
+
+
 def main() -> int:
     if "--selftest" in sys.argv:
         return selftest()
@@ -117,9 +153,12 @@ def main() -> int:
         return doctor()
     if "--help" in sys.argv or "-h" in sys.argv:
         print("RoadMind - open-source AI autopilot for driving games.\n"
-              "  roadmind            launch the app\n"
+              "  roadmind            launch the app (checks for updates first)\n"
               "  roadmind --doctor   check macOS permissions + window detection\n"
-              "  roadmind --selftest headless smoke test (good for the bundled .app)")
+              "  roadmind --selftest headless smoke test (good for the bundled .app)\n"
+              "  roadmind --noupdate skip the update prompt on launch")
+        return 0
+    if startup_update_check():
         return 0
     return run()
 

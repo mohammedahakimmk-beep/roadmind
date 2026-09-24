@@ -1,5 +1,5 @@
 {
-  "version": "0.1.2",
-  "notes": "Crash-proof: the app can never die invisibly anymore - errors show a dialog and a crash.log; YOLO weights are bundled so no network/disk surprises; engine tolerates bad frames; --selftest verifies the bundle.",
-  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.1.2/RoadMind-0.1.2.dmg"
+  "version": "0.1.3",
+  "notes": "Updates gate the launch now: RoadMind checks for a newer version before the window opens and offers to update first.",
+  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.1.3/RoadMind-0.1.3.dmg"
 }
