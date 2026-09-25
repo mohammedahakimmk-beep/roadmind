@@ -20,6 +20,19 @@ else:
 DATA_DIR = APP_SUPPORT
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Windows-shell/OS chrome windows are never driveable targets. Filtering them
+# keeps the auto-picked "largest window" from silently being the whole DESKTOP.
+_MAC_SHELL_OWNERS = {
+    "window server", "dock", "systemuiserver", "control center",
+    "textinputmenuagent", "spotlight", "siri", "notificationcenter",
+    "loginwindow",
+}
+_WIN_SHELL_EXES = {
+    "explorer.exe", "searchapp.exe", "searchhost.exe",
+    "startmenuexperiencehost.exe", "shellhost.exe", "textinputhost.exe",
+    "applicationframehost.exe", "runtimebroker.exe", "gamebar.exe",
+}
+
 
 def _ensure_dpi_aware():
     """Windows only: report real pixels so rects match mss grabs (scale = 1.0)."""
@@ -113,10 +126,17 @@ def open_accessibility_settings() -> None:
 
 
 def list_windows(min_w: int = 400, min_h: int = 300, exclude_pid: int | None = None):
-    """Return on-screen windows as (name, owner, pid, x, y, w, h) + hwnd (win)."""
-    if IS_MAC:
-        return _list_windows_mac(min_w, min_h, exclude_pid)
-    return _list_windows_win(min_w, min_h, exclude_pid)
+    """Return on-screen windows as (name, owner, pid, x, y, w, h) + hwnd (win).
+
+    OS chrome/desktop windows are filtered out, and the front-most process's
+    windows are listed FIRST so the auto-selected entry is the game you just
+    alt-tabbed to - not the biggest (which is often the desktop)."""
+    wins = (_list_windows_mac(min_w, min_h, exclude_pid)
+            if IS_MAC else _list_windows_win(min_w, min_h, exclude_pid))
+    fp = _frontmost_pid()
+    if fp:
+        wins.sort(key=lambda w: 0 if w.get("pid") == fp else 1)
+    return wins
 
 
 def _list_windows_mac(min_w, min_h, exclude_pid):
@@ -132,8 +152,10 @@ def _list_windows_mac(min_w, min_h, exclude_pid):
         pid = w.get("kCGWindowOwnerPID", -1)
         if pid == own:
             continue
-        name = w.get("kCGWindowName", "") or ""
         owner = w.get("kCGWindowOwnerName", "") or ""
+        if owner.strip().lower() in _MAC_SHELL_OWNERS:
+            continue
+        name = w.get("kCGWindowName", "") or ""
         b = w.get("kCGWindowBounds") or {}
         x, y, ww, hh = b.get("X", 0), b.get("Y", 0), b.get("Width", 0), b.get("Height", 0)
         if ww < min_w or hh < min_h:
@@ -163,6 +185,9 @@ def _list_windows_win(min_w, min_h, exclude_pid):
         pid = pid.value
         if pid == own:
             return True
+        owner = _exe_name_for_pid(kernel32, pid)
+        if owner.lower() in _WIN_SHELL_EXES:
+            return True
         text = ctypes.create_unicode_buffer(512)
         user32.GetWindowTextW(hwnd, text, 511)
         rect = wintypes.RECT()
@@ -173,7 +198,7 @@ def _list_windows_win(min_w, min_h, exclude_pid):
             return True
         found.append({
             "name": text.value,
-            "owner": _exe_name_for_pid(kernel32, pid),
+            "owner": owner,
             "pid": pid,
             "x": int(rect.left), "y": int(rect.top),
             "w": int(w), "h": int(h),
@@ -196,6 +221,42 @@ def _dedupe_windows(out):
         seen.add(key)
         uniq.append(w)
     return uniq
+
+
+def _frontmost_pid():
+    """PID of the currently focused window/process (used to auto-pick the game)."""
+    if IS_MAC:
+        try:
+            from AppKit import NSWorkspace
+            app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            if app:
+                return int(app.processIdentifier())
+        except Exception:
+            return None
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        h = user32.GetForegroundWindow()
+        if not h:
+            return None
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+        return pid.value or None
+    except Exception:
+        return None
+
+
+def primary_monitor_size() -> tuple[int, int]:
+    """Physical pixel size of the primary monitor (0, 0) when unknown."""
+    try:
+        import mss
+        with mss.mss() as s:
+            m = s.monitors[1]
+            return int(m["width"]), int(m["height"])
+    except Exception:
+        return 0, 0
 
 
 def _exe_name_for_pid(kernel32, pid):

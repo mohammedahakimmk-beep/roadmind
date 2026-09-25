@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.6.4 — Bug fixes and improvements
+
+- **The window you picked is now the window that's watched.** The picker no
+  longer auto-selects the LARGEST window (often the desktop/`Program Manager`
+  on Windows — the reason a "chosen" window could feed the whole screen). It
+  filters out desktop/shell/OS-chrome windows and auto-picks the FRONT-MOST
+  window (the game you just alt-tabbed to).
+- **Vision status now shows the exact region** being captured: e.g. "watching
+  1920x1080px" and - when the region fills the monitor - "(fills the screen -
+  game is fullscreen/borderless, that's the whole game)". A fullscreen game's
+  window genuinely IS the whole screen, so a full-screen capture there is
+  correct behaviour, and now it's labelled as such.
+- **Windows DPI fix**: the EXE now claims per-monitor DPI awareness BEFORE Tk
+  opens, so window rects and screen grabs both use physical pixels. On a
+  150%-scaled display a mismatched (DPI-unaware) rect could grab the wrong
+  stretch of screen; that path is closed.
+- 13 unit tests green; selftest inside the bundled EXE passes on CI; full GUI
+  boot verified (picker → live capture on the front-most window).
+
 ## v0.6.3 — Bug fixes and improvements
 
 - **Calibration is now required.** ENGAGE AUTOPILOT refuses to start until the

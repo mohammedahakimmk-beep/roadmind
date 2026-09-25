@@ -83,7 +83,10 @@ class DashboardScene(tk.Frame):
             .place(relx=0.5, rely=0.455, anchor="center", x=230)
 
         # game status line under the picker
-        self._status = T.label(self, "Pick a window and hit IGNITE ENGINE.",
+        self._status = T.label(self, "Pick a window and hit IGNITE ENGINE \u00b7 "
+                                "the front-most window is auto-selected. "
+                                "Note: a fullscreen/borderless game IS the "
+                                "whole screen \u2014 that's expected.",
                                bg=T.BG_DEEP, fg=T.FG_DIM, font=T.UI_SM)
         self._status.place(relx=0.5, rely=0.505, anchor="center")
 

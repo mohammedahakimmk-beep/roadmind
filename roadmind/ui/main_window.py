@@ -187,8 +187,17 @@ class MainWindow(tk.Tk):
         self.engine.stop()
         self.capture = capture.WindowCapture((w["x"], w["y"], w["w"], w["h"]))
         self.engine.start(self.capture)
+        if self._cp is not None:
+            self._cp.view.game_label = f"{w['owner']}" \
+                + (f" - {w['name']}" if w["name"] else "") \
+                + f"  @ {w['w']}x{w['h']}px"
+        mw, mh = sys_utils.primary_monitor_size()
+        fills_screen = mw and abs(w["w"] - mw) <= 4 and abs(w["h"] - mh) <= 4
+        head = f"Vision active on [{w['owner']}] \u00b7 watching {w['w']}x{w['h']}px "
+        head += ("(fills the screen - game is fullscreen/borderless, that's the whole game)"
+                 if fills_screen else "(this exact window only)")
         parts = [
-            f"Vision active on [{w['owner']}]",
+            head,
             f"screen={'ok' if sys_utils.is_screen_capture_allowed() else 'grants missing'}",
             f"keyboard={'ok' if sys_utils.is_accessibility_trusted() else 'grants missing'}",
         ]

@@ -12,6 +12,20 @@ import sys
 import time
 import traceback
 
+# Windows: become per-monitor DPI aware BEFORE Tk creates any window, so window
+# rects (GetWindowRect) and screen grabs (mss) both run in PHYSICAL pixels.
+# Otherwise a 150%-scaled display renames regions and the capture misses the
+# picked window (or grabs the wrong swath of screen).
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 
 def _write_crash(exc: BaseException) -> str | None:
     from roadmind import sys_utils
