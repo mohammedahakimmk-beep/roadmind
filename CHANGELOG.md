@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.2 — Windows launch crash fix (bad cursor spec)
+
+- Fixed an immediate crash on Windows: the UI used the macOS-only cursor name
+  `pointinghand`, which Windows Tk rejects (`bad cursor spec`), killing the
+  dashboard at launch. Now uses the cross-platform `hand2` everywhere.
+- Cursor assignment is also guarded so a cosmetic cursor problem can never take
+  the app down again.
+
 ## v0.6.1 — hazard lights, empty-key controls, clearer whitelist
 
 - **Hazard lights added** to the control set (default key `p`). The AI now

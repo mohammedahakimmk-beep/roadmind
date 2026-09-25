@@ -1,6 +1,6 @@
 [project]
 name = "roadmind"
-version = "0.6.1"
+version = "0.6.2"
 description = "GameROBOT - open-source AI autopilot for driving games. Local CV brain, Tesla-style vision, tracks every object with EST-speed labels, dashboard launcher, learn-by-calibration, whitelisted controls only."
 requires-python = ">=3.11"
 license = { text = "MIT" }

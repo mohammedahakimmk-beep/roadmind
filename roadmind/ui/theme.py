@@ -104,6 +104,9 @@ def pulse_alpha(t: float, lo: float = 0.25, hi: float = 1.0) -> float:
 
 
 # ---- widgets ------------------------------------------------------------------
+HAND = "hand2"  # cross-platform hand cursor (Windows/macOS/X11); "pointinghand" is macOS-only
+
+
 class PillButton(tk.Canvas):
     """Fully rounded (curved) button: canvas-drawn, with hover and press states."""
 
@@ -132,7 +135,10 @@ class PillButton(tk.Canvas):
         self._pulse_color = None
         self._pulse_t = 0
         self._pulse_after = None
-        self.configure(cursor="pointinghand")
+        try:
+            self.configure(cursor=HAND)
+        except tk.TclError:
+            pass  # cosmetic only - never crash the app over a cursor
         self.bind("<Enter>", lambda e: self._hover_in())
         self.bind("<Leave>", lambda e: self._hover_out())
         self.bind("<ButtonPress-1>", lambda e: self._press())
@@ -255,7 +261,10 @@ class PillButton(tk.Canvas):
         if "state" in kw:
             st = kw.pop("state")
             self._state = "disabled" if st in ("disabled", "") else "normal"
-            super().configure(cursor="arrow" if self._state == "disabled" else "pointinghand")
+            try:
+                super().configure(cursor="arrow" if self._state == "disabled" else HAND)
+            except tk.TclError:
+                pass  # cosmetic only
             changed = True
         if kw:
             super().configure(kw)

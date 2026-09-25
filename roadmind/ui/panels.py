@@ -125,7 +125,7 @@ class WhitelistPanel(tk.Frame):
                 bg=T.BG, fg=T.FG, activebackground=T.BG, activeforeground=T.FG,
                 selectcolor=T.PANEL2, highlightthickness=0,
                 font=(T.UI[0], 10),
-                cursor="pointinghand",
+                cursor=T.HAND,
                 command=lambda a=action: self._toggle(a))
             cb.pack(side="left", padx=(2, 6))
             T.label(row, "KEY", font=T.UI_SM, fg=T.FG_FAINT, bg=T.BG)\
