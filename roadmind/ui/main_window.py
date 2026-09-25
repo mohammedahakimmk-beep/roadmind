@@ -187,13 +187,33 @@ class MainWindow(tk.Tk):
         self.engine.stop()
         self.capture = capture.WindowCapture((w["x"], w["y"], w["w"], w["h"]))
         self.engine.start(self.capture)
+        # One-shot sanity check: the grab MUST be exactly the picked window's
+        # region. If the OS handed us a scaled/mismatched rect (DPI), say so
+        # instead of silently watching the wrong stretch of screen.
+        check = self.capture.grab()
+        target = self.capture.size
+        match = (check.shape[1], check.shape[0]) == target
+        if not match:
+            self.game_owner = ""
+            self.game_pid = 0
+            self.engine.stop()
+            self.capture = None
+            warn = (f"CAPTURE MISMATCH: requested {target[0]}x{target[1]}px "
+                    "but the OS returned a "
+                    f"{check.shape[1]}x{check.shape[0]}px region. This happens "
+                    f"when the display scale and the window rectangle disagree. "
+                    f"Reboot the app; if it persists set Windows display scaling "
+                    f"to 100% and tell me what scale you're on.")
+            self._set_status(warn)
+            return
         if self._cp is not None:
             self._cp.view.game_label = f"{w['owner']}" \
                 + (f" - {w['name']}" if w["name"] else "") \
-                + f"  @ {w['w']}x{w['h']}px"
+                + f"  @ {self.capture.size[0]}x{self.capture.size[1]}px"
         mw, mh = sys_utils.primary_monitor_size()
-        fills_screen = mw and abs(w["w"] - mw) <= 4 and abs(w["h"] - mh) <= 4
-        head = f"Vision active on [{w['owner']}] \u00b7 watching {w['w']}x{w['h']}px "
+        cw, ch = self.capture.size
+        fills_screen = mw and abs(cw - mw) <= 4 and abs(ch - mh) <= 4
+        head = f"Vision active on [{w['owner']}] \u00b7 watching {cw}x{ch}px "
         head += ("(fills the screen - game is fullscreen/borderless, that's the whole game)"
                  if fills_screen else "(this exact window only)")
         parts = [
@@ -556,13 +576,23 @@ class CockpitScene(tk.Frame):
         self._update_btn.pack(side="right", padx=(0, 12))
 
     def _ask_update(self, latest):
-        if messagebox.askyesno(
+        if not messagebox.askyesno(
                 "Update available",
-                f"A newer GameROBOT is out (v{latest}, you have {__version__}).\n\n"
+                f"A newer GameROBOT is out (v{latest},\n"
+                f"you have {__version__}).\n\n"
                 f"{self._update_notes}\n\n"
-                "Open the download page for the new build?"):
-            updater.open_release(self._update_url or
-                                 "https://github.com/mohammedahakimmk-beep/roadmind/releases")
+                "Update now? The new build will be downloaded and "
+                "GameROBOT will restart to apply it."):
+            return
+        ok, msg = updater.download_and_apply(
+            self._update_url or "https://github.com/mohammedahakimmk-beep/roadmind/releases")
+        if ok:
+            self._update_btn.configure(text="Updating \u2026", state="disabled")
+            self.set_status(msg)
+            self.app.root.after(1800, self.app._on_close)
+        else:
+            updater.open_release(self._update_url or updater.RELEASE_URL)
+            self.set_status(msg)
 
     def progress_on(self):
         if not self._progress_visible:

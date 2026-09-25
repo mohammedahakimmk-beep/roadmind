@@ -1,6 +1,6 @@
 {
-  "version": "0.6.4",
-  "notes": "Window picker fixed: filters desktop/shell windows, auto-picks the front-most window (not the biggest), and shows exactly what region it's watching (a fullscreen game fills the whole screen - that's the whole game). Windows DPI-aware at startup so captures line up on scaled displays. Windows-only; the macOS DMG is discontinued (last: v0.1.3).",
+  "version": "0.6.5",
+  "notes": "Picked windows now grab EXACTLY that window: capture scale is measured (not assumed) so scaled Windows displays line up, and a sanity check confirms each grab before it's shown. The updater now REAL, not a download page: it downloads the new EXE, waits, replaces the running file and restarts on the new version. Windows-only; macOS DMG discontinued (last: v0.1.3).",
   "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases",
-  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.4/GameROBOT-0.6.4-Windows.exe"
+  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.5/GameROBOT-0.6.5-Windows.exe"
 }

@@ -279,10 +279,26 @@ def _exe_name_for_pid(kernel32, pid):
 
 
 def backing_scale() -> float:
-    """Points->pixels scale for the main display (1.0 on Windows: we are DPI-aware)."""
+    """Rect->pixels scale for the primary display.
+
+    macOS: points -> physical pixels (from the display's pixel width).
+    Windows: when the hook runs DPI-unaware, GetWindowRect returns LOGICAL
+    pixels while mss grabs PHYSICAL ones - so we measure the ratio instead of
+    assuming 1.0. When the process is DPI-aware, GetSystemMetrics already
+    reports physical pixels and the ratio is 1.0. This is what kept the picked
+    window's grab from covering "the whole screen" on scaled displays."""
     if not IS_MAC:
         _ensure_dpi_aware()
-        return 1.0
+        try:
+            import ctypes
+            import mss
+            logical_w = ctypes.windll.user32.GetSystemMetrics(0)
+            with mss.mss() as s:
+                phys_w = s.monitors[1]["width"]
+            scale = phys_w / logical_w
+            return scale if 0.5 <= scale <= 4.0 else 1.0
+        except Exception:
+            return 1.0
     try:
         import Quartz
         disp = Quartz.CGMainDisplayID()

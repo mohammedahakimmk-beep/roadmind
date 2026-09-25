@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.6.5 — Bug fixes and improvements
+
+- **A picked window now grabs exactly that window.** Two real causes of the
+  "whole screen" capture are closed: (1) on scaled Windows displays the app
+  could run DPI-unaware, so the window's rectangle was in *logical* pixels
+  while the screen grab was in *physical* pixels — the grab slid off the window
+  onto the rest of the desktop and other windows. The pickup scale is now
+  MEASURED (physical display width ÷ logical width), so the region is correct
+  at any Windows scaling. (2) a one-shot sanity check after every pick verifies
+  the grabbed frame is exactly the picked window's size; a mismatch is reported
+  on-screen instead of silently watching the wrong area.
+- **The updater now ACTUALLY updates.** Pressing "Update" no longer just opens
+  the download page. On Windows the EXE downloads the new build to a staging
+  file, and a detached helper waits for GameROBOT to exit, replaces the running
+  file and relaunches the new version. Old version → real update, restart on
+  the new build. (Dev/source and macOS builds still fall back to the release
+  page, which is the only safe path there.)
+- 13 unit tests green; selftest inside the bundled EXE passes on CI; live boot
+  verified on the front-most window.
+
 ## v0.6.4 — Bug fixes and improvements
 
 - **The window you picked is now the window that's watched.** The picker no
