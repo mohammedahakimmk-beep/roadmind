@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.6 — Bug fixes and improvements
+
+- **Calibration no longer blocks driving.** Previously ENGAGE refused to arm
+  until `throttle/brake/steer` were probed, even though the measured curve is
+  tuning-only. Now you pick the window, hit ENGAGE and the AI drives on
+  optical flow + lane vision immediately. CALIBRATE stays as an optional
+  tuning button for latency tuning.
+- **Live "what is the AI doing" readout.** While armed, the status line shows
+  the brain live: mode, throttle %, steering angle and the current reason
+  (e.g. `AI ON · cruise · throttle 84% · steer -0.31 · "cruising toward 50 km/h"`),
+  so it's obvious whether the autopilot is working and what it's reacting to.
+- Verified: armed autopilot produces a plan and a ramping throttle end-to-end;
+  13 unit tests green; selftest inside the bundled EXE passes on CI.
+
 ## v0.6.5 — Bug fixes and improvements
 
 - **A picked window now grabs exactly that window.** Two real causes of the

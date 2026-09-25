@@ -1,6 +1,6 @@
 {
-  "version": "0.6.5",
-  "notes": "Picked windows now grab EXACTLY that window: capture scale is measured (not assumed) so scaled Windows displays line up, and a sanity check confirms each grab before it's shown. The updater now REAL, not a download page: it downloads the new EXE, waits, replaces the running file and restarts on the new version. Windows-only; macOS DMG discontinued (last: v0.1.3).",
+  "version": "0.6.6",
+  "notes": "Calibration no longer required - pick a window, hit ENGAGE, and the AI drives on optical flow + lane vision right away (CALIBRATE remains optional tuning). Live AI status shows mode/throttle/steer/reason while driving. Windows-only; macOS DMG discontinued (last: v0.1.3).",
   "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases",
-  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.5/GameROBOT-0.6.5-Windows.exe"
+  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.6/GameROBOT-0.6.6-Windows.exe"
 }

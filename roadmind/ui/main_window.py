@@ -241,29 +241,12 @@ class MainWindow(tk.Tk):
             self._dash.set_status(text)
 
     def _require_calibration(self):
-        miss = self.cfg.missing_calibration()
-        if not miss:
-            return ""
-        return ("GameROBOT won't drive before it learns how YOUR game responds.\n\n"
-                "Calibration briefly holds each drive control key and watches the "
-                "screen move (optical flow) to measure latency + gain. Without those "
-                "numbers the bot can't tell whether a keypress worked - so it stays "
-                "parked instead of driving blind.\n\n"
-                "Not probed yet: " + ", ".join(miss) + "\n\n"
-                "What to do:\n"
-                "  1. Start the game, stop somewhere safe and open, keep it front-most.\n"
-                "  2. In the cockpit, click CALIBRATE (auto probe, ~10 seconds).\n"
-                "  3. Then press ENGAGE AUTOPILOT again.\n\n"
-                "Re-run it for each game - every game responds differently.")
+        return ""
 
     # ---------------- autopilot ------------------------------------------------
     def arm(self):
         if not self.capture:
             messagebox.showwarning("No target", "Pick a game window first.")
-            return
-        cal_msg = self._require_calibration()
-        if cal_msg:
-            messagebox.showwarning("Please calibrate first", cal_msg)
             return
         if sys_utils.requires_accessibility() and not sys_utils.is_accessibility_trusted():
             messagebox.showwarning(
@@ -286,7 +269,8 @@ class MainWindow(tk.Tk):
             "1. Make sure the game is FRONT-MOST (fullscreen/exclusive).\n"
             "   Autopilot pauses automatically if the game loses focus.\n"
             "2. Put the car somewhere SAFE (open road / parking).\n"
-            "3. Only whitelisted controls are used.\n\n"
+            "3. Only whitelisted controls are used. CALIBRATE is OPTIONAL\n"
+            "   tuning - the AI starts driving right away on optical flow.\n\n"
             "ctrl+alt+Q stops everything instantly.\n\n"
             "After clicking OK, click into the game once.")
         if self.game_pid:
@@ -315,10 +299,6 @@ class MainWindow(tk.Tk):
     def _preflight(self):
         """Issue list explaining, in plain words, exactly why the car may not move."""
         issues = []
-        miss = self.cfg.missing_calibration()
-        if miss:
-            issues.append("CALIBRATE REQUIRED: " + ", ".join(miss) +
-                          " - click CALIBRATE below first")
         if {"throttle", "steer_left", "steer_right"} & {
                 a for a in C.ACTIONS if self.cfg.allowed(a)} == set():
             issues.append("WHITELIST: no steering/throttle keys - tick them on")
@@ -443,6 +423,11 @@ class MainWindow(tk.Tk):
                         st.thinking = dt.reason
                         self.controller.set_plan(dt)
                         self._last_plan_t = now
+                        reason = dt.reason[0] if dt.reason else dt.mode
+                        self._set_status(
+                            f"AI ON \u00b7 {dt.mode} \u00b7 "
+                            f"throttle {int(dt.throttle * 100)}% \u00b7 "
+                            f"steer {dt.steer:+.2f} \u00b7 \"{reason}\"")
         self.after(40, self._tick)
 
     def _on_close(self):
@@ -557,15 +542,12 @@ class CockpitScene(tk.Frame):
     def set_preflight(self, issues):
         if not issues:
             self._hint.configure(text="PRE-FLIGHT: READY \u2022 pick a window, "
-                                      "CALIBRATE once if asked, then ENGAGE",
+                                      "then ENGAGE (CALIBRATE is optional tuning)",
                                  fg=T.FG_DIM, bg=T.BG_DEEP)
             self.btn_arm.configure(bg="#0f9a63")
         else:
             self._hint.configure(text="PRE-FLIGHT: " + " \u2022 ".join(issues),
                                  fg=T.AMBER, bg=T.BG_DEEP)
-            if any(i.startswith("CALIBRATE") for i in issues) \
-                    and self.app.armed is False:
-                self.btn_arm.configure(bg=T.AMBER)
 
     def update_available(self, latest, url, notes):
         self._update_url = url or ""
