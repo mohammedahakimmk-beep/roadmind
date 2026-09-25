@@ -46,6 +46,17 @@ DEFAULT_UI = {
     "show_hud": True,       # speed-limit dial + thinking ribbon
 }
 
+# Projective world model used by the AI's depth/speed estimates. Games with
+# different FOVs want different values, hence per-window tuning lives here.
+DEFAULT_WORLD = {
+    "horizon_y": 0.42,      # where the road vanishes (0..1 down the frame)
+    "dist_k": 6.6,          # distance scale: bigger -> objects read farther
+    "vpx": 0.5,             # vanishing X (0..1): how far the road centre sits right
+    "lane_roi": 0.55,       # bottom slice of the frame to hunt lane lines in
+}
+
+MODEL_SIZES = ["n", "s", "m"]  # YOLO11 size toggle (yolo11n.pt / s / m)
+
 
 @dataclass
 class CalibrationCurve:
@@ -61,6 +72,8 @@ class Profile:
     limits: dict = field(default_factory=lambda: dict(DEFAULT_LIMITS))
     calibration: dict = field(default_factory=lambda: {a: asdict(CalibrationCurve()) for a in ACTIONS})
     ui: dict = field(default_factory=lambda: dict(DEFAULT_UI))
+    world: dict = field(default_factory=lambda: dict(DEFAULT_WORLD))
+    model: str = "n"
 
 
 class RoadMindConfig:
@@ -84,6 +97,11 @@ class RoadMindConfig:
                 if isinstance(data.get("ui"), dict):
                     p.ui.update({k: v for k, v in data["ui"].items()
                                  if k in DEFAULT_UI})
+                if isinstance(data.get("world"), dict):
+                    p.world.update({k: v for k, v in data["world"].items()
+                                    if k in DEFAULT_WORLD})
+                if str(data.get("model", "n")) in MODEL_SIZES:
+                    p.model = str(data["model"])
                 if isinstance(data.get("calibration"), dict):
                     for a in ACTIONS:
                         c = data["calibration"].get(a, {})
@@ -102,6 +120,8 @@ class RoadMindConfig:
             "bindings": self.profile.bindings,
             "limits": self.profile.limits,
             "ui": self.profile.ui,
+            "world": self.profile.world,
+            "model": self.profile.model,
             "calibration": {a: asdict(c) if not isinstance(c, dict) else c
                             for a, c in self.profile.calibration.items()},
         }

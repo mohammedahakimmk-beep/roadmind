@@ -50,7 +50,8 @@ def _label(t: dict) -> str:
 
 
 class RoadView(tk.Frame):
-    def __init__(self, master, game_label="pick a game window", prefs=None):
+    def __init__(self, master, game_label="pick a game window", prefs=None,
+                 world=None):
         super().__init__(master, bg=T.VPORT_IN, highlightthickness=0)
         self.canvas = tk.Canvas(self, bg=T.VPORT_IN, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
@@ -60,11 +61,16 @@ class RoadView(tk.Frame):
         self.armed = False
         self.game_label = game_label
         self.prefs = prefs or {}
+        self.world = world or {}
         self._photo = None
 
     def set_frame(self, frame, state):
         self.frame = frame
         self.state = state
+
+    def set_world(self, world):
+        self.world = dict(world or {})
+        self._draw()
 
     # -- helpers ------------------------------------------------------------
     def _p(self, k, d=True):
@@ -84,8 +90,8 @@ class RoadView(tk.Frame):
             self._blit_frame(c, W, H)
 
         st = self.state
-        hz = int(H * 0.42)
-        vpx = W / 2
+        hz = int(H * self.world.get("horizon_y", 0.42))
+        vpx = W * self.world.get("vpx", 0.5)
 
         if st is not None and self._p("show_lanes") and st.lanes.get("valid"):
             off = st.lanes.get("offset", 0.0)

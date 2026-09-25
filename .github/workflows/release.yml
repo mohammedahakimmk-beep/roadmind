@@ -51,6 +51,29 @@ jobs:
           if ("$out" -notmatch "SELFTEST OK") { exit 1 }
           & "dist\GameROBOT.exe" --doctor | Tee-Object -Variable out2
 
+      # ----------------------------------------------------------------------
+      # EXE SIGNING (roadmap).
+      #
+      # To sign (removes the SmartScreen warning), get an OV/EV Authenticode
+      # cert, set repo secrets ACS_ENDPOINT / ACS_CLIENT_ID / ACS_CLIENT_SECRET
+      # / ACS_CERT_PROFILE_NAME for Azure Trusted Signing, then uncomment:
+      #
+      # - name: Sign EXE
+      #   uses: azure/trusted-signing-action@v0
+      #   with:
+      #     files-path: dist/GameROBOT.exe
+      #     sign-options: ""
+      #     endpoint: ${{ secrets.ACS_ENDPOINT }}
+      #     account: ${{ secrets.ACS_ACCOUNT_NAME }}
+      #     certificate-profile: ${{ secrets.ACS_CERT_PROFILE_NAME }}
+      #     client-id: ${{ secrets.ACS_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.ACS_TENANT_ID }}
+      #     client-secret: ${{ secrets.ACS_CLIENT_SECRET }}
+      #
+      # Then the "Attach EXE" step signs a copy (signtool output goes to the
+      # same artifact name) before upload. See README "Signing".
+      # ----------------------------------------------------------------------
+
       - name: Create or update release
         shell: pwsh
         run: |

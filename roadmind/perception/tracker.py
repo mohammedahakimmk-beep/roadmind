@@ -19,10 +19,26 @@ import numpy as np
 HORIZON_Y = 0.42
 DIST_K = 6.6
 
+_HORIZON_Y = HORIZON_Y   # live copies (tunable per game via set_world)
+_DIST_K = DIST_K
+
+
+def set_world(horizon_y=None, dist_k=None) -> None:
+    """Apply per-game world tuning so depth/speed estimates match this FOV."""
+    global _HORIZON_Y, _DIST_K
+    if horizon_y is not None:
+        _HORIZON_Y = max(0.25, min(0.9, float(horizon_y)))
+    if dist_k is not None:
+        _DIST_K = max(2.0, min(30.0, float(dist_k)))
+
+
+def reset_world() -> None:
+    set_world(horizon_y=HORIZON_Y, dist_k=DIST_K)
+
 
 def _to_dist(y_bottom: float) -> float:
-    y = max(HORIZON_Y + 0.02, min(0.99, float(y_bottom)))
-    return max(1.0, min(80.0, DIST_K / (y - HORIZON_Y)))
+    y = max(_HORIZON_Y + 0.02, min(0.99, float(y_bottom)))
+    return max(1.0, min(80.0, _DIST_K / (y - _HORIZON_Y)))
 
 
 @dataclass
@@ -43,6 +59,9 @@ class Track:
     speed: float = 0.0       # 0..1 normalized approach speed
     est_kmh: float = 0.0     # est. relative approach speed (play units)
     moving: bool = False     # "fast enough to be a moving object"
+    hits: int = 0            # consecutive real detections (reliability)
+    occ: int = 0             # frames since last real detection (0 = live)
+    predicted: bool = False  # True while coasting through an occlusion
 
     # -- display --
     @property
@@ -105,7 +124,7 @@ class Memory:
 
 
 class Tracker:
-    def __init__(self, max_age: float = 0.6, iou_thresh: float = 0.25):
+    def __init__(self, max_age: float = 1.0, iou_thresh: float = 0.25):
         self.tracks: list[Track] = []
         self._next_id = 0
         self.max_age = max_age
@@ -115,28 +134,50 @@ class Tracker:
         now = time.time()
         for t in self.tracks:
             t.age += 1
+        matched: set[int] = set()
         for d in dets:
             best, biou = None, 0.0
             for t in self.tracks:
+                if t.id in matched:
+                    continue
                 v = _iou(d, {"x": t.x, "y": t.y, "w": t.w, "h": t.h})
                 if v > biou:
                     best, biou = t, v
             if best and biou >= self.iou_thresh:
+                matched.add(best.id)
                 best.x, best.y, best.w, best.h = d["x"], d["y"], d["w"], d["h"]
                 best.cls = d["cls"]
                 best.label = d["label"]
                 best.conf = d["conf"]
                 best.age = 0
                 best.last_seen = now
+                best.occ = 0
+                best.predicted = False
+                best.hits += 1
             else:
                 self.tracks.append(Track(id=self._next_id, cls=d["cls"],
                                          label=d["label"], x=d["x"], y=d["y"],
                                          w=d["w"], h=d["h"], conf=d["conf"],
-                                         age=0, last_seen=now))
+                                         age=0, last_seen=now, hits=1))
+                matched.add(self._next_id)
                 self._next_id += 1
-        self.tracks = [t for t in self.tracks if (now - t.last_seen) < self.max_age]
+        # occlusion-resilient coasting: objects that briefly disappear (occluded
+        # behind a truck, lighting flicker, detector hiccup) keep gliding at
+        # their last measured velocity instead of vanishing, so boxes/est-speeds
+        # don't strobe. Expiry still stops long-gone ghosts.
         for t in self.tracks:
-            self._estimate_speed(t, now)
+            if t.id not in matched:
+                t.occ += 1
+                t.predicted = True
+                dtp = min(0.2, max(0.0, now - t.last_seen))
+                t.x = max(0.02, min(0.98, t.x + t.vx * dtp))
+                t.y = max(0.02, min(0.98, t.y + t.vy * dtp))
+        self.tracks = [t for t in self.tracks
+                       if (now - t.last_seen) < self.max_age
+                       and not (t.predicted and t.occ > 8)]
+        for t in self.tracks:
+            if not t.predicted:
+                self._estimate_speed(t, now)
         return self.tracks
 
     # ------------------------------------------------------------------ speeds
@@ -166,8 +207,11 @@ class Tracker:
 
     def leader(self) -> Track | None:
         """Closest vehicle ahead: largest box whose bottom is in the lower half
-        (i.e. on the road ahead of us), falling back to the largest vehicle."""
-        near = [t for t in self.tracks if t.cls in {2, 3, 5, 7} and t.y < 0.8]
+        (i.e. on the road ahead of us), falling back to the largest vehicle.
+        Long-coasted ghosts (occ > 3) don't count as threats anymore."""
+        near = [t for t in self.tracks
+                if t.cls in {2, 3, 5, 7} and t.y < 0.8
+                and not (t.predicted and t.occ > 3)]
         if not near:
             return None
         near.sort(key=lambda t: t.h, reverse=True)
@@ -175,7 +219,9 @@ class Tracker:
 
     def person(self) -> Track | None:
         """Most threatening person on the road ahead (largest, on-ground)."""
-        ppl = [t for t in self.tracks if t.cls == 0 and t.y < 0.85]
+        ppl = [t for t in self.tracks
+               if t.cls == 0 and t.y < 0.85
+               and not (t.predicted and t.occ > 3)]
         if not ppl:
             return None
         return max(ppl, key=lambda t: t.h)

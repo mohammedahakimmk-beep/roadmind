@@ -6,6 +6,7 @@ blinker_left/right, honk, plus a human-readable intent list shown in the UI.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -50,6 +51,15 @@ class Planner:
             self._throttle = 0.0
             d.mode = "stopped"
             d.reason.append("red light / stop sign ahead")
+        elif "brake" in allowed and ws.light_state == "yellow" \
+                and (time.time() - ws.light_ts) < ws.LIGHT_FRESH_S:
+            # yellow: ease off, don't slam (no stale-light risk now)
+            if ws.speed_est > 0.35:
+                self._throttle = max(0.0, self._throttle - 0.25)
+                d.brake = 0.3
+                d.throttle = self._throttle
+                d.mode = "cautious"
+                d.reason.append("yellow light \u2014 easing off")
         elif "brake" in allowed and ws.near_person and ws.person_distance > 0.34:
             d.brake = min(1.0, (ws.person_distance - 0.20) * 1.3)
             d.throttle = 0.0
@@ -91,6 +101,8 @@ class Planner:
                 d.mode = "cruise" if ws.lanes.get("valid") else "lane_search"
                 d.reason.append(f"cruising toward {int(goal_speed)} km/h" +
                                 (" (speed limit)" if lim else ""))
+                if ws.has_green_light():
+                    d.reason.append("green light \u2014 going")
             elif "brake" in allowed and ws.speed_est > 0.97:
                 self._throttle = max(0.0, self._throttle - 0.3)
                 d.brake = 0.5

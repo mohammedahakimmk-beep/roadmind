@@ -47,6 +47,8 @@ class DashboardScene(tk.Frame):
         self._status_txt = None
         self._perm_btns = {}
         self._toggles = {}
+        self._model_btns = {}
+        self._world_entries = {}
         self._update_pill = None
         self._ignite = None
         self._ignite_sub = None
@@ -96,8 +98,33 @@ class DashboardScene(tk.Frame):
             self._perm_btns[key] = b
 
         # settings card
-        self._settings_row(0.665, 0.735)
+        self._world_row()
+        self._settings_row(0.63, 0.70)
+        self._model_row()
         self._speed_row()
+
+    def _world_row(self):
+        """Per-window world tune (FOV calibration): horizon, distance, vanish X,
+        lane ROI."""
+        rely = 0.588
+        fields = [("horizon_y", "HORIZON", 0.42, (0.25, 0.9)),
+                  ("dist_k", "DISTANCE", 6.6, (2.0, 30.0)),
+                  ("vpx", "VANISH X", 0.5, (0.1, 0.9)),
+                  ("lane_roi", "LANE ROI", 0.55, (0.3, 0.8))]
+
+        def _mk(key, label, _def, bounds, x):
+            T.label(self, label, bg=T.BG_DEEP, fg=T.FG_DIM, font=T.UI_SM)\
+                .place(relx=0.5, rely=rely - 0.012, anchor="center", x=x)
+            e = T.entry(self, width=5, font=T.MONO)
+            e.insert(0, str(self.cfg.profile.world.get(key, _def)))
+            e.bind("<Return>", lambda ev, k=key, e=e, b=bounds:
+                   self._save_world(k, e.get(), b))
+            e.place(relx=0.5, rely=rely + 0.012, anchor="center", x=x)
+            return e
+        _mk(fields[0][0], fields[0][1], fields[0][2], fields[0][3], -255)
+        _mk(fields[1][0], fields[1][1], fields[1][2], fields[1][3], -85)
+        _mk(fields[2][0], fields[2][1], fields[2][2], fields[2][3], 85)
+        _mk(fields[3][0], fields[3][1], fields[3][2], fields[3][3], 255)
 
     def _settings_row(self, rely_top, rely_bot):
         labels = [("show_boxes", "BOXES"), ("show_speed", "EST SPEED"),
@@ -112,14 +139,29 @@ class DashboardScene(tk.Frame):
             b.place(relx=0.5, rely=y, anchor="center", x=(i - 1.5) * 108)
             self._toggles[key] = b
 
+    def _model_row(self):
+        """YOLO size toggle: n (bundled) / s / m (auto-download) vs accuracy."""
+        y = 0.722
+        for i, size in enumerate(("n", "s", "m")):
+            on = (self.cfg.profile.model == size)
+            name = {"n": "N \u00b7 FAST", "s": "S", "m": "M \u00b7 SMART"}[size]
+            b = T.pill(self, name, command=lambda s=size: self._set_model(s),
+                       bg=T.ACC if on else T.PANEL2,
+                       fg=T.GO_DARK if on else T.FG_FAINT,
+                       padx=14, pady=5, font=T.UI_SM_B)
+            b.place(relx=0.5, rely=y, anchor="center", x=(i - 1) * 92)
+            self._model_btns[size] = b
+
     def _speed_row(self):
+        rely = 0.785
+
         def _mk(label, key, x):
             T.label(self, label, bg=T.BG_DEEP, fg=T.FG_DIM, font=T.UI_SM)\
-                .place(relx=0.5, rely=0.795, anchor="center", x=x)
+                .place(relx=0.5, rely=rely, anchor="center", x=x)
             e = T.entry(self, width=6, font=T.MONO)
             e.insert(0, str(int(self.cfg.profile.limits.get(key, 50))))
             e.bind("<Return>", lambda ev, k=key, e=e: self._save_limit(k, e.get()))
-            e.place(relx=0.5, rely=0.795, anchor="center", x=x + 74)
+            e.place(relx=0.5, rely=rely, anchor="center", x=x + 74)
             return e
         _mk("TARGET SPEED", "target_speed", -150)
         _mk("MAX SPEED", "max_speed", 40)
@@ -140,6 +182,24 @@ class DashboardScene(tk.Frame):
             return
         self.cfg.profile.limits[key] = float(v)
         self.cfg.save()
+
+    def _save_world(self, key, text, bounds):
+        try:
+            v = float(text)
+            v = max(bounds[0], min(bounds[1], v))
+        except Exception:
+            return
+        self.cfg.profile.world[key] = v
+        self.cfg.save()
+        self.app.apply_world()
+
+    def _set_model(self, size):
+        self.cfg.profile.model = size
+        self.cfg.save()
+        for s, b in self._model_btns.items():
+            b.configure(bg=T.ACC if s == size else T.PANEL2,
+                        fg=T.GO_DARK if s == size else T.FG_FAINT)
+        self.app.apply_model(size)
 
     def _on_pick(self, _ev=None):
         self.app.pick_game_at(self._win_combo.current())
@@ -218,7 +278,11 @@ class DashboardScene(tk.Frame):
                       fill=T.FG_FAINT, font=(T._FAM, 8, "bold"), tags="scene")
         c.create_text(cx, int(H * 0.63), text="VISION OVERLAYS \u2014 WHAT THE BOT SHOWS YOU",
                       fill=T.FG_FAINT, font=(T._FAM, 8, "bold"), tags="scene")
-        c.create_text(cx, int(H * 0.775), text="SPEED TARGETS (KM/H)",
+        c.create_text(cx, int(H * 0.698), text="VISION MODEL \u2014 AI SIZE VS ACCURACY",
+                      fill=T.FG_FAINT, font=(T._FAM, 8, "bold"), tags="scene")
+        c.create_text(cx, int(H * 0.566), text="WORLD TUNE \u2014 MAKE THIS GAME'S ROAD READ RIGHT (ENTER TO APPLY)",
+                      fill=T.ACC2, font=(T._FAM, 8, "bold"), tags="scene")
+        c.create_text(cx, int(H * 0.762), text="SPEED TARGETS (KM/H)",
                       fill=T.FG_FAINT, font=(T._FAM, 8, "bold"), tags="scene")
 
     def _draw_version_pill(self, c, W, H):

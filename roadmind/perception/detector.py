@@ -25,6 +25,14 @@ CLASSES = {
 
 VEHICLE_CLASSES = {2, 3, 5, 7}
 
+# YOLO11 size toggle: "n" is bundled with the EXE; "s"/"m" auto-download on
+# first use (saved under the writable data dir, ~19 MB / ~49 MB weights).
+MODEL_SIZES = {
+    "n": "yolo11n.pt",
+    "s": "yolo11s.pt",
+    "m": "yolo11m.pt",
+}
+
 
 def resolve_model_path(model_name: str = "yolo11n.pt") -> str:
     """Locate the weights file: bundled resource -> data dir -> download target."""

@@ -34,12 +34,23 @@ cockpit.
 - **Game-menu dashboard** — animated launcher with your version, target-game
   picker, permissions strip, vision-overlay settings and a pulsing
   IGNITE ENGINE button.
-- **Smarter AI (v0.5.0)** — every object the YOLO brain understands gets a
+- **Smarter AI (v0.5.0+)** — every object the YOLO brain understands gets a
   bounding box + label chip: `CAR · EST SPEED: 60`, `HUMAN · EST SPEED: 6`…
   per-object relative speed is measured from a projective world model; the bot
   **brakes gently when a human is on the road**, ramps throttle smoothly,
   smooths steering, reads speed-limit signs + traffic lights, tracks its
   leader and keeps a safe gap.
+- **Light-aware driving (v0.6.0)** — traffic lights are classified by their
+  real color (red stops, yellow eases, green goes) with a freshness window, so
+  a light that leaves view can't leave you parked anywhere.
+- **Occlusion-proof tracking (v0.6.0)** — objects that blink behind a truck or
+  a detection hiccup keep gliding at their last velocity and re-acquire the
+  same ID, instead of strobing on and off.
+- **WORLD TUNE (v0.6.0)** — per-window FOV calibration: horizon, distance
+  scale, vanishing X and lane ROI, typed straight into the dashboard and
+  applied live to the depth/speed model and the projected road.
+- **VISION MODEL toggle (v0.6.0)** — YOLO size N (bundled) / S / M
+  (auto-download) pills on the dashboard: accuracy vs CPU.
 - **Whitelist gate** — before every drive you choose exactly which controls exit
   (throttle, brake, steering, blinkers, honk, ABS…). Unchecked → the AI is *blocked*
   from using that action.
@@ -72,8 +83,9 @@ The updater nags you automatically when a newer version is released.
 
 ## Use
 
-1. **Dashboard** — pick your game window, tweak the vision overlays, hit
-   **IGNITE ENGINE**.
+1. **Dashboard** — pick your game window, tweak the vision overlays, size the
+   AI model (N/S/M), tune the world values if the depth/est-speeds feel off
+   for your game's FOV, then hit **IGNITE ENGINE**.
 2. **Cockpit** — whitelist exactly the controls the AI may use (right panel).
 3. **CALIBRATE** — park the car somewhere safe; GameROBOT auto-probes each key.
 4. **ENGAGE AUTOPILOT** — watch the boxes, EST speeds and its thinking live.
@@ -100,6 +112,17 @@ macOS binaries are released.
 GitHub Actions (`release.yml`) does it automatically for every `v*` tag and
 rewrites the version manifest. macOS packaging (`packaging/build_dmg.sh`) is
 deprecated and unmaintained.
+
+## Signing
+
+The released EXE is unsigned, so Windows SmartScreen shows "Unknown publisher"
+(*More info → Run anyway*). To remove that, sign the EXE with an Authenticode
+certificate: the workflow has a ready-to-enable Azure Trusted Signing block
+(commented in `release.yml`) — set the `ACS_*` repo secrets, uncomment the
+step, and the next tagged build uploads a signed binary. A cheap
+self-signed cert does **not** remove the SmartScreen warning, so only an
+OV/EV commercial cert is worth it. This is an open-source project: we'd love a
+sponsor who already has one.
 
 ## License
 

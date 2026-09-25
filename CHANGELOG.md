@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.6.0 — smarter still: light-aware, occlusion-proof, tuneable
+
+### Smarter AI
+- **The bot actually reads the light.** Traffic lights are classified by their
+  real color: red stops, **yellow eases off** ("cautious" mode, no slamming),
+  green gets flagged "go" in the thinking ribbon. Light state now has a
+  **freshness window (~1.3s)** — a stale "red" can no longer leave the car
+  parked forever when the light disappears from view or the detector blinks.
+- **Occlusion-resilient tracking.** When an object briefly vanishes behind a
+  truck, lighting flicker or a detector hiccup, its box keeps gliding at the
+  last measured velocity (constant-velocity coast) instead of strobing — and
+  re-acquires the same ID when it reappears. Long-gone ghosts are dropped and
+  don't count as threats.
+- **WORLD TUNE (per-window FOV calibration).** New dashboard row with four
+  live values: HORIZON (vanishing point), DISTANCE (depth scale), VANISH X and
+  LANE ROI. Type + Enter and the depth/speed model, lane crop and the projected
+  road in the vision view all re-baseline for that game.
+- **VISION MODEL toggle.** YOLO size N / S / M pills on the dashboard. N is
+  bundled with the EXE; S and M auto-download on first use and persist. Bigger
+  models = better small-object detection at a CPU cost.
+
+### Under the hood
+- `Profile.world` + `Profile.model` persisted in config.json; tracker depth
+  globals are tuneable per game via `tracker.set_world()`.
+- Lane detector accepts a `horizon_y` crop; pipeline lanes honor the tuned ROI.
+- Release pipeline gains (commented) scaffolding for Azure Trusted Signing so
+  the SmartScreen warning can be removed once a cert exists — see README
+  "Signing".
+- 6 new unit tests covering world/model roundtrip, occlusion coasting +
+  re-acquisition, light freshness expiry and yellow-light planning.
+
 ## v0.5.0 — GameROBOT rebrand + the 10x-smarter update
 
 **The project is now GameROBOT** (the shipped EXE is `GameROBOT-0.5.0-Windows.exe`).

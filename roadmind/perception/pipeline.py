@@ -30,20 +30,38 @@ class WorldState:
     speed_est: float = 0.0                        # normalized motion->speed hint
     sign_boxes: list = field(default_factory=list)
     thinking: list = field(default_factory=list)
+    light_ts: float = 0.0               # last time a traffic light was seen
+
+    # traffic light state is only trustworthy for a short window after we saw
+    # it, so a stale "red" can't leave the car parked forever after the light
+    # leaves view or the detector blinks on it.
+    LIGHT_FRESH_S = 1.3
 
     def has_red_light(self) -> bool:
-        return self.light_state == "red"
+        if self.light_state != "red":
+            return False
+        return (time.time() - self.light_ts) < self.LIGHT_FRESH_S
+
+    def has_green_light(self) -> bool:
+        if self.light_state != "green":
+            return False
+        return (time.time() - self.light_ts) < self.LIGHT_FRESH_S
 
     def has_stop_sign(self) -> bool:
         for t in self.tracks:
             if t.label == "stop_sign" and t.h > 0.12 and t.y > 0.5:
-                return True
+                if not (t.predicted and t.occ > 3):
+                    return True
         return False
 
 
 class PerceptionEngine:
-    def __init__(self):
-        self.det = detector.Detector()
+    def __init__(self, cfg=None):
+        from . import detector
+        self.cfg = cfg
+        size = (cfg.profile.model if cfg is not None else "n")
+        target = detector.MODEL_SIZES.get(size, detector.MODEL_SIZES["n"])
+        self.det = detector.Detector(target)
         self.trk = tracker.Tracker()
         self.mem = tracker.Memory()
         self.state = WorldState()
@@ -54,6 +72,26 @@ class PerceptionEngine:
         self._frame_counter = 0
         self._frame_time = []
         self._stop = threading.Event()
+        self._horizon = 0.55            # lane crop start (from world.lane_roi)
+        if cfg is not None:
+            self.apply_world()
+
+    def apply_world(self):
+        """Push the current per-window world tune into the depth/lane models."""
+        w = (self.cfg.profile.world if self.cfg is not None else {}) or {}
+        tracker.set_world(horizon_y=w.get("horizon_y"),
+                          dist_k=w.get("dist_k"))
+        self._horizon = float(w.get("lane_roi", 0.55))
+
+    def set_model(self, size: str):
+        """Swap the YOLO size (n/s/m). Model files are bundled for 'n', and
+        ultralytics auto-downloads 's'/'m' on first use, saved under the
+        writable data dir."""
+        from . import detector
+        target = detector.MODEL_SIZES.get(size)
+        if not target or target == self.det.model_name:
+            return
+        self.det = detector.Detector(target)
 
     def start(self, capture) -> None:
         self._cap = capture
@@ -100,7 +138,7 @@ class PerceptionEngine:
         self.state.dets = dets
         self.state.tracks = tracks
 
-        self.state.lanes = lanes.detect_lanes(frame)
+        self.state.lanes = lanes.detect_lanes(frame, horizon_y=self._horizon)
 
         # motion / speed estimate on ground plane
         self._prev_gray = None if self._prev_gray is None else self._prev_gray
@@ -130,8 +168,10 @@ class PerceptionEngine:
                 crop = frame[int((tl.y - tl.h / 2) * H): int((tl.y + tl.h / 2) * H),
                              int((tl.x - tl.w / 2) * W): int((tl.x + tl.w / 2) * W)]
                 state = signs.traffic_light_color(crop)
-                self.mem.note_light(state)
-                self.state.light_state = self.mem.light_state
+                if state != "unknown":
+                    self.mem.note_light(state)
+                    self.state.light_state = self.mem.light_state
+                    self.state.light_ts = time.time()
             self._last_light_t = now
 
         leader = self.trk.leader()

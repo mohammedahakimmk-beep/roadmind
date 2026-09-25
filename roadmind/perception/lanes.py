@@ -5,8 +5,10 @@ from __future__ import annotations
 import numpy as np
 
 
-def detect_lanes(img_bgr: np.ndarray) -> dict:
+def detect_lanes(img_bgr: np.ndarray, horizon_y: float = 0.55) -> dict:
     """Return dict with left/right lane line info relative to center.
+
+    horizon_y selects the bottom slice of the frame to look at (road area):
 
     out: {
       'valid': bool,
@@ -19,7 +21,7 @@ def detect_lanes(img_bgr: np.ndarray) -> dict:
 
     h, w = img_bgr.shape[:2]
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    roi = gray[int(h * 0.55):, :]
+    roi = gray[int(h * max(0.3, min(0.8, horizon_y))):, :]
     roi = cv2.GaussianBlur(roi, (5, 5), 0)
     edges = cv2.Canny(roi, 70, 160)
 

@@ -39,7 +39,7 @@ class MainWindow(tk.Tk):
         self.configure(bg=T.BG_DEEP, padx=0, pady=0)
 
         self.cfg = C.RoadMindConfig()
-        self.engine = pipeline.PerceptionEngine()
+        self.engine = pipeline.PerceptionEngine(self.cfg)
         self.planner = Planner(self.cfg)
         self.controller = ctlmod.Controller(self.cfg)
         self.safety = safety.Safety()
@@ -131,6 +131,24 @@ class MainWindow(tk.Tk):
         self._cp = CockpitScene(self.stage, self)
         self._cp.pack(fill="both", expand=True)
         self._refresh_windows()
+
+    # ---------------- world tune + model swap ------------------------------------
+    def apply_world(self):
+        """Push WORLD TUNE into the depth/lane models and the vision view."""
+        self.engine.apply_world()
+        if self._cp is not None:
+            self._cp.view.set_world(self.cfg.profile.world)
+            self._set_status("World tune applied \u00b7 restart vision on the "
+                             "game window to fully re-baseline")
+
+    def apply_model(self, size: str):
+        if size not in C.MODEL_SIZES:
+            return
+        self.engine.set_model(size)
+        note = "VISION MODEL switched" + (
+            "" if size == "n" else
+            " \u00b7 S/M weights download on first use (bundled N is instant)")
+        self._set_status(note)
 
     # ---------------- updater ------------------------------------------------
     def _start_update_check(self):
@@ -394,7 +412,8 @@ class CockpitScene(tk.Frame):
         body.pack(fill="both", expand=True, padx=12, pady=(2, 8))
         self.viewport = T.RoundedPanel(body, radius=18)
         body.add(self.viewport, minsize=540, stretch="always")
-        self.view = RoadView(self.viewport, prefs=self.app.cfg.profile.ui)
+        self.view = RoadView(self.viewport, prefs=self.app.cfg.profile.ui,
+                             world=self.app.cfg.profile.world)
         self.view.pack(fill="both", expand=True, padx=self.viewport.pad,
                        pady=self.viewport.pad)
 
