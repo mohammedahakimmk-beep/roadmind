@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import random
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -243,7 +244,7 @@ class DashboardScene(tk.Frame):
         c = self.canvas
         W = c.winfo_width() or 100
         H = c.winfo_height() or 100
-        now = __import__("time").time()
+        now = time.time()
 
         # spawn / drift particles
         if len(self._particles) < 26 and random.random() < 0.3:

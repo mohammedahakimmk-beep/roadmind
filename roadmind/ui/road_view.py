@@ -9,6 +9,7 @@ so the view feels alive.
 
 from __future__ import annotations
 
+import math
 import time
 import tkinter as tk
 
@@ -111,7 +112,7 @@ class RoadView(tk.Frame):
 
         # sweep scan line (always animating above the road: it feels "live")
         sy = int((now * 0.35) % 1.0 * H)
-        a = 0.10 + 0.05 * (0.5 + 0.5 * __import__("math").sin(now * 2.0))
+        a = 0.10 + 0.05 * (0.5 + 0.5 * math.sin(now * 2.0))
         c.create_line(0, sy, W, sy, fill=T.mix(T.ACC, T.VPORT_IN, 1.0 - a), width=1)
 
     def _blit_frame(self, c, W, H):
@@ -196,7 +197,7 @@ class RoadView(tk.Frame):
 
         # person: glowing head marker so HUMANS pop instantly
         if t.cls == 0:
-            a = 0.4 + 0.4 * (0.5 + 0.5 * __import__("math").sin(now * 6.0))
+            a = 0.4 + 0.4 * (0.5 + 0.5 * math.sin(now * 6.0))
             c.create_oval(x1 - 3, cyb - 6, x2 + 3, cyb - 2,
                           outline=T.mix("#4dffa0", T.VPORT_IN, 1.0 - a),
                           width=2)
