@@ -1,6 +1,6 @@
 {
   "version": "0.6.0",
-  "notes": "Smarter still: traffic lights are now read for their actual color with a freshness window (red stops, yellow eases off, green goes - and a stale red can't leave you parked), occlusion-resilient tracking keeps boxes/EST-speeds alive when an object blinks behind a truck, plus per-window WORLD TUNE (horizon/distance/vanishing-X/lane ROI) and a YOLO size toggle (N bundled, S/M auto-download). Windows only, as always.",
-  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases",
+  "notes": "GameROBOT rebrand + the 10x-smarter update: tracks every object with EST-SPEED labels, brakes for humans, ramped throttle, speed-limit reader, dashboard game menu with IGNITE ENGINE. Windows-only; the macOS DMG is discontinued (last: v0.1.3).",
+  "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/tag/v0.6.0",
   "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.0/GameROBOT-0.6.0-Windows.exe"
 }
