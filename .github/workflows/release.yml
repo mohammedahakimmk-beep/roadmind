@@ -86,17 +86,14 @@ jobs:
           unreliable, so GameROBOT is now Windows-only.
 
           What changed in this release:
-          - Smarter AI: tracks every object (cars, people, bikes, signs) with
-            a bounding box + EST-SPEED label above each box; brakes gently for
-            humans on the road; ramped throttle + smoothed steering; reads
-            speed-limit signs, lanes and traffic lights; leader + human
-            distance memory.
-          - Brand-new dashboard game menu: WELCOME BACK, DRIVER, live version
-            pill, target-game picker, permissions strip, vision-overlay
-            settings card and the pulsing IGNITE ENGINE button.
-          - Animated cockpit: scan-line vision, LIVE dot, game label, object
-            census, per-object boxes and est-speed chips.
-          - Rebranded from RoadMind to GameROBOT (same open-source autopilot)." 2>$null
+          - Light-aware driving: traffic lights read by real color - red stops,
+            yellow eases off, green goes - with a freshness window so a stale
+            red can't leave you parked.
+          - Occlusion-proof tracking: boxes + EST-speeds keep gliding through
+            brief disappearances and re-acquire the same ID.
+          - WORLD TUNE card: tune horizon / distance / vanishing X / lane ROI
+            per game, applied live to the depth model and the vision road.
+          - VISION MODEL toggle: YOLO N (bundled) / S / M (auto-download)." 2>$null
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -113,7 +110,7 @@ jobs:
         shell: pwsh
         run: |
           $v = $env:GITHUB_REF_NAME.TrimStart("v")
-          $notes = "GameROBOT rebrand + the 10x-smarter update: tracks every object with EST-SPEED labels, brakes for humans, ramped throttle, speed-limit reader, dashboard game menu with IGNITE ENGINE. Windows-only; the macOS DMG is discontinued (last: v0.1.3)."
+          $notes = "Smarter still: traffic lights read by real color (red stops, yellow eases, green goes) with a freshness window; occlusion-proof tracking; per-window WORLD TUNE (horizon/distance/vanish X/lane ROI); YOLO size toggle N/S/M. Windows-only; the macOS DMG is discontinued (last: v0.1.3)."
           @"
           {
             "version": "$v",
