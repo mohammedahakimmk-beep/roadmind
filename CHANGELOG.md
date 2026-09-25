@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.6.2 — Windows launch crash fix (bad cursor spec)
+## v0.6.2 — Bug fixes and improvements
 
 - Fixed an immediate crash on Windows: the UI used the macOS-only cursor name
   `pointinghand`, which Windows Tk rejects (`bad cursor spec`), killing the
