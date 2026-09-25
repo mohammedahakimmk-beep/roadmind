@@ -11,7 +11,7 @@ from . import sys_utils
 ACTIONS = [
     "throttle", "brake", "steer_left", "steer_right",
     "reverse", "handbrake", "gear_up", "gear_down",
-    "blinker_left", "blinker_right", "honk", "abs", "headlights",
+    "blinker_left", "blinker_right", "hazard", "honk", "abs", "headlights",
 ]
 
 ACTION_LABELS = {
@@ -25,6 +25,7 @@ ACTION_LABELS = {
     "gear_down": "Gear down",
     "blinker_left": "Blinker left",
     "blinker_right": "Blinker right",
+    "hazard": "Hazard lights (double blinkers)",
     "honk": "Honk",
     "abs": "ABS (pulsed braking)",
     "headlights": "Headlights",
@@ -33,7 +34,8 @@ ACTION_LABELS = {
 DEFAULT_BINDINGS = {
     "throttle": "w", "brake": "s", "steer_left": "a", "steer_right": "d",
     "reverse": "1", "handbrake": "space", "gear_up": "e", "gear_down": "q",
-    "blinker_left": "left", "blinker_right": "right", "honk": "h",
+    "blinker_left": "left", "blinker_right": "right", "hazard": "p",
+    "honk": "h",
     "abs": "shift", "headlights": "z",
 }
 
@@ -130,4 +132,7 @@ class RoadMindConfig:
             json.dump(data, f, indent=2)
 
     def allowed(self, action: str) -> bool:
-        return self.profile.actions.get(action, False) and action in self.profile.bindings
+        # A blank binding = the game has no such control, so the action is
+        # unusable regardless of its whitelist toggle ("keep empty if no key").
+        return self.profile.actions.get(action, False) and bool(
+            self.profile.bindings.get(action))

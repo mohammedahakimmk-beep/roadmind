@@ -84,6 +84,10 @@ class WhitelistPanel(tk.Frame):
         self._row = {}
         self._checks = {}
         self._entries = {}
+        T.label(self, "Leave KEY empty when the game has no such control "
+                       "\u2014 the bot simply won't use it.",
+                font=T.UI_SM, fg=T.FG_FAINT, bg=T.BG, justify="left",
+                wraplength=280).pack(fill="x", padx=12, pady=(0, 6))
 
         sc = tk.Canvas(self, bg=T.BG, highlightthickness=0, bd=0)
         bar = tk.Scrollbar(self, orient="vertical", command=sc.yview,
@@ -127,7 +131,13 @@ class WhitelistPanel(tk.Frame):
             T.label(row, "KEY", font=T.UI_SM, fg=T.FG_FAINT, bg=T.BG)\
                 .pack(side="right", padx=(4, 4))
             e = T.entry(row, width=7, font=T.MONO_SM)
-            e.insert(0, cfg.profile.bindings.get(action, ""))
+            self._entries[action] = e
+            e.bind("<FocusIn>", lambda ev, a=action: self._real(a))
+            e.bind("<FocusOut>", lambda ev, a=action: self._blur(a))
+            if cfg.profile.bindings.get(action):
+                e.insert(0, cfg.profile.bindings.get(action, ""))
+            else:
+                self._placeholder(action)
             e.bind("<KeyRelease>", lambda ev, a=action: self._bind(a, ev.widget.get()))
             e.pack(side="right", padx=(0, 8), ipady=1)
             self._checks[action] = var
@@ -145,8 +155,37 @@ class WhitelistPanel(tk.Frame):
         self.cfg.profile.actions[action] = self._checks[action].get()
         self.on_change()
 
+    def _placeholder(self, action):
+        e = self._entries[action]
+        e.delete(0, "end")
+        e.insert(0, "\u2014")
+        e.configure(fg=T.FG_FAINT)
+
+    def _real(self, action):
+        e = self._entries[action]
+        if e.get() == "\u2014":
+            e.delete(0, "end")
+        e.configure(fg=T.FG)
+
+    def _blur(self, action):
+        if not self._entries[action].get():
+            self._placeholder(action)
+
     def _bind(self, action, text):
-        self.cfg.profile.bindings[action] = text.strip().lower()
+        text = text.strip().lower()
+        if not text:
+            # no key in the game -> unusable, and the whitelist reflects it
+            self.cfg.profile.bindings[action] = ""
+            self._placeholder(action)
+            if self._checks[action].get():
+                self._checks[action].set(False)
+                self.cfg.profile.actions[action] = False
+        else:
+            self.cfg.profile.bindings[action] = text
+            e = self._entries[action]
+            e.delete(0, "end")
+            e.insert(0, text)
+            e.configure(fg=T.FG)
         self.on_change()
 
     def _save(self):

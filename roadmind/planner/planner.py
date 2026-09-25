@@ -21,6 +21,7 @@ class Drivetrain:
     blinker_right: bool = False
     honk: bool = False
     headlights: bool = False
+    hazard: bool = False
     mode: str = "idle"
     reason: list = field(default_factory=list)
 
@@ -138,6 +139,14 @@ class Planner:
             d.reason.append("warning: vehicle very close")
         if "headlights" in allowed:
             d.headlights = self.cfg.profile.actions.get("headlights", True)
+        # Hazards: standing on the brakes because someone is right there, or a
+        # full stop. Hazards override blinkers while they flash.
+        if "hazard" in allowed and d.brake >= 0.5 and (
+                (ws.leader and ws.leader_distance > 0.7) or d.mode in ("stopped", "hard_follow")):
+            d.hazard = True
+            d.reason.append("warning: hazard lights")
+        if d.hazard:
+            d.blinker_left = d.blinker_right = False
 
         self._blinker_l, self._blinker_r = d.blinker_left, d.blinker_right
         self._last_goal = goal_speed

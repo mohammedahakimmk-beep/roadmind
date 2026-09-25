@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.6.1 — hazard lights, empty-key controls, clearer whitelist
+
+- **Hazard lights added** to the control set (default key `p`). The AI now
+  flashes them when it stands hard on the brakes because a car is right there
+  (or on a full stop), and hazards override blinkers while they flash. Turn the
+  toggle off in the whitelist to silence them; an empty key disables them too.
+- **Empty KEY = the game has no such control.** If a game doesn't have a
+  blinker, a hazard button or ABS, just leave the KEY field empty — the bot
+  skips that action entirely and the whitelist checkbox auto-clears. Previously
+  an unbound key still counted as "allowed" and sent an empty keypress.
+- **Clearer whitelist UX.** Each control shows a dim `—` placeholder when no
+  key is set, and an explanatory line sits under the WHITELIST header.
+- Blinkers (left/right, default ←/→) were already there — this release adds the
+  single-button control and makes "no control" explicit.
+
 ## v0.6.0 — smarter still: light-aware, occlusion-proof, tuneable
 
 ### Smarter AI

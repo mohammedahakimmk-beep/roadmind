@@ -11,11 +11,47 @@ def test_whitelist_gate():
     assert cfg.allowed("throttle")
     cfg.profile.actions["throttle"] = False
     assert not cfg.allowed("throttle")
-    # binding missing => not allowed either
+    # empty binding = the game has no such control => blocked regardless of toggle
     cfg.profile.actions["throttle"] = True
     cfg.profile.bindings["throttle"] = ""
-    # '' key is present in dict -> allowed, but binding empty means no key; treat as not allowed
-    assert cfg.profile.bindings.get("throttle") != "w" or True
+    assert not cfg.allowed("throttle")
+    cfg.profile.bindings["throttle"] = "w"
+    assert cfg.allowed("throttle")
+
+
+def test_hazard_defaults_and_labels():
+    assert "hazard" in C.ACTIONS
+    assert C.ACTION_LABELS["hazard"].startswith("Hazard")
+    assert "hazard" in C.DEFAULT_BINDINGS
+    assert C.DEFAULT_BINDINGS["hazard"]
+
+
+def test_plan_emits_hazard_on_hard_threat_stop():
+    from roadmind.planner.planner import Planner
+    from roadmind.perception.pipeline import WorldState
+    cfg = C.RoadMindConfig(os.path.join(tempfile.mkdtemp(), "c.json"))
+    p = Planner(cfg)
+    allowed = {a for a in C.ACTIONS if cfg.allowed(a)}
+    ws = WorldState()
+    ws.lanes = {"valid": True, "offset": 0.0, "angle": 0.0}
+    ws.speed_limit = 60
+    ws.leader = {"x": 0.5, "y": 0.5, "w": 0.3, "h": 0.35, "label": "car", "id": 1}
+    ws.leader_distance = 0.85
+    ws.motion, ws.speed_est = 0.5, 0.6
+    dt = p.plan(ws, allowed)
+    assert dt.hazard is True
+    assert dt.blinker_left is False and dt.blinker_right is False
+    # clear road -> no hazards
+    ws.leader = None
+    ws.leader_distance = 0.0
+    dt = p.plan(ws, allowed)
+    assert dt.hazard is False
+    # hazard whitelisted-off -> never
+    cfg.profile.actions["hazard"] = False
+    ws.leader = {"x": 0.5, "y": 0.5, "w": 0.3, "h": 0.35, "label": "car", "id": 1}
+    ws.leader_distance = 0.85
+    dt = p.plan(ws, {a for a in C.ACTIONS if cfg.allowed(a)})
+    assert dt.hazard is False
 
 
 def test_default_bindings_exist_for_all_actions():

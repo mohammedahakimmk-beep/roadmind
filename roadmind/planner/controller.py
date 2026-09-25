@@ -48,6 +48,7 @@ class Controller:
 
     def _loop(self):
         last_honk = 0.0
+        last_hazard = 0.0
         blink_flip = {}
         while not self._stop.is_set():
             if not self.armed:
@@ -86,6 +87,11 @@ class Controller:
                 if dt.honk and "honk" in allowed and now - last_honk > 4.0:
                     input_ctl.tap(self.cfg.profile.bindings["honk"], hold_ms=180)
                     last_honk = now
+                # hazards: single tap toggles in most games - press at most
+                # every 1.5s while the emergency stands, so we don't toggle off
+                if dt.hazard and "hazard" in allowed and now - last_hazard > 1.5:
+                    input_ctl.tap(self.cfg.profile.bindings["hazard"], hold_ms=120)
+                    last_hazard = now
 
             # apply/release
             for key in (want - self._pressed_last):

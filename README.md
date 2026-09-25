@@ -52,8 +52,9 @@ cockpit.
 - **VISION MODEL toggle (v0.6.0)** — YOLO size N (bundled) / S / M
   (auto-download) pills on the dashboard: accuracy vs CPU.
 - **Whitelist gate** — before every drive you choose exactly which controls exit
-  (throttle, brake, steering, blinkers, honk, ABS…). Unchecked → the AI is *blocked*
-  from using that action.
+  (throttle, brake, steering, blinkers, hazard lights, honk, ABS…). Unchecked → the
+  AI is *blocked* from using that action. **Leave a game's KEY field empty when it
+  has no such control** (dim `—` placeholder) — the bot simply skips it.
 - **Fully-automatic calibration** — GameROBOT probes each whitelisted key
   (holds it, measures the on-screen response with optical flow) and records
   latency + gain. Re-run for any game.
