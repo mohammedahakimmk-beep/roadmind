@@ -4,6 +4,7 @@ import tempfile
 
 from roadmind import config as C
 from roadmind import input_ctl
+from roadmind import sys_utils
 
 
 def test_whitelist_gate():
@@ -52,6 +53,25 @@ def test_plan_emits_hazard_on_hard_threat_stop():
     ws.leader_distance = 0.85
     dt = p.plan(ws, {a for a in C.ACTIONS if cfg.allowed(a)})
     assert dt.hazard is False
+
+
+def test_calibration_required_gate():
+    cfg = C.RoadMindConfig(os.path.join(tempfile.mkdtemp(), "c.json"))
+    assert cfg.is_calibrated() is False
+    assert len(cfg.missing_calibration()) == 4        # all drive controls unprobed
+    for a in C.CORE_CAL:
+        cfg.profile.calibration[a] = C.CalibrationCurve(latency_ms=47.0)
+    assert cfg.is_calibrated() is True
+    assert cfg.missing_calibration() == []
+    cfg.profile.calibration["throttle"] = C.CalibrationCurve(latency_ms=0.0)
+    assert cfg.missing_calibration() == ["Throttle (gas)"]
+
+
+def test_elevation_ok_default_on_this_os():
+    # macOS / unset pid: always fine (no Windows UIPI there); on Windows the
+    # real integrity comparison is exercised live instead
+    assert sys_utils.game_elevation_ok(0) == (True, "")
+    assert sys_utils.game_elevation_ok(None) == (True, "")
 
 
 def test_default_bindings_exist_for_all_actions():

@@ -1,6 +1,6 @@
 {
-  "version": "0.6.2",
-  "notes": "Crash fix: the Windows EXE no longer dies at launch with 'bad cursor spec' (macOS-only cursor replaced by cross-platform hand2), and cursors can never crash the app again. Windows-only; the macOS DMG is discontinued (last: v0.1.3).",
+  "version": "0.6.3",
+  "notes": "Calibration is now required (ENGAGE says please calibrate first with the exact missing controls); elevated Windows games detected - run GameROBOT as Administrator or keys are silently blocked (UIPI) and the car never moves; live PRE-FLIGHT explains why the car isn't moving. Windows-only; the macOS DMG is discontinued (last: v0.1.3).",
   "url": "https://github.com/mohammedahakimmk-beep/roadmind/releases",
-  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.2/GameROBOT-0.6.2-Windows.exe"
+  "exe_url": "https://github.com/mohammedahakimmk-beep/roadmind/releases/download/v0.6.3/GameROBOT-0.6.3-Windows.exe"
 }

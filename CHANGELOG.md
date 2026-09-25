@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.6.3 — Bug fixes and improvements
+
+- **Calibration is now required.** ENGAGE AUTOPILOT refuses to start until the
+  throttle / brake / steer controls have been probed, and says *"Please calibrate
+  first"* with the exact missing controls and why it needs them (it learns each
+  key's latency + gain by watching the screen respond). The cockpit keeps a
+  live amber **PRE-FLIGHT** line (e.g. `CALIBRATE REQUIRED: Throttle (gas),
+  Brake, Steer left, Steer right`) and the ENGAGE button stays amber until you
+  calibrate.
+- **Windows "elevated game" now diagnosed.** If the game runs as Administrator,
+  Windows silently blocks injected keystrokes (UIPI) — the bot can watch the
+  full screen but the car never moves. GameROBOT now detects the elevated game,
+  warns right after you pick it, blocks ENGAGE with *"run GameROBOT as
+  Administrator"*, and shows it in the PRE-FLIGHT line.
+- **Live preflight explains why the car isn't moving** — calibration, missing
+  steering/throttle keys in the whitelist, macOS Accessibility grant, no
+  window target — shown in plain words under the control bar and re-checked a
+  few times a second.
+- Permission help (?) now documents the Windows admin case and the rare
+  raw-input/anti-cheat game that ignores synthetic keys (rebind in-game there).
+- 13 unit tests green; selftest inside the bundled EXE passes on CI.
+
 ## v0.6.2 — Bug fixes and improvements
 
 - Fixed an immediate crash on Windows: the UI used the macOS-only cursor name

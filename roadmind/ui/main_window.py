@@ -131,6 +131,7 @@ class MainWindow(tk.Tk):
         self._cp = CockpitScene(self.stage, self)
         self._cp.pack(fill="both", expand=True)
         self._refresh_windows()
+        self._refresh_preflight()
 
     # ---------------- world tune + model swap ------------------------------------
     def apply_world(self):
@@ -186,10 +187,17 @@ class MainWindow(tk.Tk):
         self.engine.stop()
         self.capture = capture.WindowCapture((w["x"], w["y"], w["w"], w["h"]))
         self.engine.start(self.capture)
-        msg = (f"Vision active on [{w['owner']}] \u00b7 "
-               f"screen={'ok' if sys_utils.is_screen_capture_allowed() else 'grants missing'} \u00b7 "
-               f"keyboard={'ok' if sys_utils.is_accessibility_trusted() else 'grants missing'}")
-        self._set_status(msg)
+        parts = [
+            f"Vision active on [{w['owner']}]",
+            f"screen={'ok' if sys_utils.is_screen_capture_allowed() else 'grants missing'}",
+            f"keyboard={'ok' if sys_utils.is_accessibility_trusted() else 'grants missing'}",
+        ]
+        ok, _why = sys_utils.game_elevation_ok(self.game_pid)
+        if not ok:
+            parts.append("WARN: game is elevated - run GameROBOT as Administrator "
+                         "or keys won't reach it (car won't move)")
+        self._set_status(" \u00b7 ".join(parts))
+        self._refresh_preflight()
 
     def _on_pick_window(self, ev=None):
         if self._cp is not None:
@@ -203,10 +211,30 @@ class MainWindow(tk.Tk):
         elif self._dash is not None:
             self._dash.set_status(text)
 
+    def _require_calibration(self):
+        miss = self.cfg.missing_calibration()
+        if not miss:
+            return ""
+        return ("GameROBOT won't drive before it learns how YOUR game responds.\n\n"
+                "Calibration briefly holds each drive control key and watches the "
+                "screen move (optical flow) to measure latency + gain. Without those "
+                "numbers the bot can't tell whether a keypress worked - so it stays "
+                "parked instead of driving blind.\n\n"
+                "Not probed yet: " + ", ".join(miss) + "\n\n"
+                "What to do:\n"
+                "  1. Start the game, stop somewhere safe and open, keep it front-most.\n"
+                "  2. In the cockpit, click CALIBRATE (auto probe, ~10 seconds).\n"
+                "  3. Then press ENGAGE AUTOPILOT again.\n\n"
+                "Re-run it for each game - every game responds differently.")
+
     # ---------------- autopilot ------------------------------------------------
     def arm(self):
         if not self.capture:
             messagebox.showwarning("No target", "Pick a game window first.")
+            return
+        cal_msg = self._require_calibration()
+        if cal_msg:
+            messagebox.showwarning("Please calibrate first", cal_msg)
             return
         if sys_utils.requires_accessibility() and not sys_utils.is_accessibility_trusted():
             messagebox.showwarning(
@@ -219,6 +247,10 @@ class MainWindow(tk.Tk):
                 "  2. switch it OFF, then back ON (macOS glitch)\n"
                 "  3. quit that app completely and relaunch it\n\n"
                 "The chips refresh by themselves \u2014 no restart needed.")
+            return
+        ok_elev, elev_msg = sys_utils.game_elevation_ok(self.game_pid)
+        if not ok_elev:
+            messagebox.showwarning("Game runs as Administrator", elev_msg)
             return
         messagebox.showinfo(
             "Before you ARM",
@@ -250,6 +282,33 @@ class MainWindow(tk.Tk):
         input_ctl.release_all()
         self.disarm()
         self._set_status("STOP pressed \u2014 released all input")
+
+    def _preflight(self):
+        """Issue list explaining, in plain words, exactly why the car may not move."""
+        issues = []
+        miss = self.cfg.missing_calibration()
+        if miss:
+            issues.append("CALIBRATE REQUIRED: " + ", ".join(miss) +
+                          " - click CALIBRATE below first")
+        if {"throttle", "steer_left", "steer_right"} & {
+                a for a in C.ACTIONS if self.cfg.allowed(a)} == set():
+            issues.append("WHITELIST: no steering/throttle keys - tick them on")
+        if self.capture is None:
+            issues.append("NO TARGET: pick your game window first")
+        if self.game_pid and sys_utils.requires_accessibility() \
+                and not sys_utils.is_accessibility_trusted():
+            issues.append("KEYBOARD OFF: macOS Accessibility grant missing - "
+                          "tick the chip above")
+        if self.game_pid:
+            ok, _why = sys_utils.game_elevation_ok(self.game_pid)
+            if not ok:
+                issues.append("ELEVATED GAME: run GameROBOT as Administrator - "
+                              "Windows blocks keys into an elevated game")
+        return issues
+
+    def _refresh_preflight(self):
+        if self._cp is not None:
+            self._cp.set_preflight(self._preflight())
 
     # ---------------- calibration ------------------------------------------------
     def _launch_calibration(self):
@@ -325,6 +384,7 @@ class MainWindow(tk.Tk):
         self._tick_no += 1
         if self._tick_no % 10 == 0:
             self._refresh_perms()
+            self._refresh_preflight()
         if self._cp is None:
             self.after(40, self._tick)
             return
@@ -444,6 +504,10 @@ class CockpitScene(tk.Frame):
                               font=T.UI, fg=T.FG_DIM, bg=T.BG_DEEP)
         self.status.pack(side="left", fill="x", expand=True, padx=(6, 0))
 
+        self._hint = T.label(self, "", font=T.UI_SM_B, fg=T.FG_DIM, bg=T.BG_DEEP,
+                             justify="left", wraplength=1080)
+        self._hint.pack(fill="x", padx=16, pady=(0, 10))
+
     # ---------------- callbacks ---------------------------------------------
     def set_windows(self, labels):
         self.win_combo.configure(state="normal")
@@ -460,6 +524,19 @@ class CockpitScene(tk.Frame):
         self.btn_arm.configure(state="disabled" if armed else "normal",
                                text="ENGAGED \u25c9" if armed else "ENGAGE AUTOPILOT")
         self.status.configure(text=status_text)
+
+    def set_preflight(self, issues):
+        if not issues:
+            self._hint.configure(text="PRE-FLIGHT: READY \u2022 pick a window, "
+                                      "CALIBRATE once if asked, then ENGAGE",
+                                 fg=T.FG_DIM, bg=T.BG_DEEP)
+            self.btn_arm.configure(bg="#0f9a63")
+        else:
+            self._hint.configure(text="PRE-FLIGHT: " + " \u2022 ".join(issues),
+                                 fg=T.AMBER, bg=T.BG_DEEP)
+            if any(i.startswith("CALIBRATE") for i in issues) \
+                    and self.app.armed is False:
+                self.btn_arm.configure(bg=T.AMBER)
 
     def update_available(self, latest, url, notes):
         self._update_url = url or ""

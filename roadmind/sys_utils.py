@@ -312,6 +312,85 @@ def is_running_as_root() -> bool:
     return getpass.getuser() == "root"
 
 
+def is_admin() -> bool:
+    """True when this process is elevated (admin). Windows: shell32; macOS: euid."""
+    if IS_MAC:
+        return os.geteuid() == 0 if hasattr(os, "geteuid") else False
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _win_integrity_level(pid):
+    """Windows-only: integrity SID's RID (16384=System, 12288=High/admin,
+    8192=Medium, 4096=Low). Returns 0 when unknown/unreadable."""
+    try:
+        import ctypes
+        import struct
+        from ctypes import wintypes
+        advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        TOKEN_QUERY = 0x0008
+        TokenIntegrityLevel = 25
+        h = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return 0
+        try:
+            tok = wintypes.HANDLE()
+            if not advapi32.OpenProcessToken(h, TOKEN_QUERY, ctypes.byref(tok)):
+                return 0
+            try:
+                buf = ctypes.create_string_buffer(256)
+                needed = wintypes.DWORD()
+                if not advapi32.GetTokenInformation(tok, TokenIntegrityLevel,
+                                                    buf, 256, ctypes.byref(needed)):
+                    return 0
+                sid_ptr = struct.unpack("P", buf.raw[:ctypes.sizeof(ctypes.c_void_p)])[0]
+                if not sid_ptr:
+                    return 0
+                ln = wintypes.DWORD()
+                if not advapi32.GetLengthSid(sid_ptr, ctypes.byref(ln)):
+                    return 0
+                sidbuf = ctypes.create_string_buffer(ln.value or 68)
+                ctypes.memmove(sidbuf, ctypes.c_void_p(sid_ptr), ln.value)
+                s = wintypes.LPWSTR()
+                if not advapi32.ConvertSidToStringSidW(sidbuf, ctypes.byref(s)) or not s.value:
+                    return 0
+                last = s.value.rsplit("-", 1)[-1]
+                return int(last) if last.isdigit() else 0
+            finally:
+                advapi32.CloseHandle(tok)
+        finally:
+            kernel32.CloseHandle(h)
+    except Exception:
+        return 0
+
+
+def game_elevation_ok(pid: int) -> tuple[bool, str]:
+    """Checks the picked game can actually receive keystrokes from us.
+
+    Windows UIPI silently blocks key injection from a normal app into an
+    ELEVATED process - the bot watches fine but the car never moves. The fix is
+    to run GameROBOT as Administrator too. Always fine on macOS.
+    """
+    if IS_MAC or not pid:
+        return True, ""
+    try:
+        game_lvl = _win_integrity_level(pid)
+        if game_lvl <= 8192 or game_lvl == 0:
+            return True, ""
+        if is_admin():
+            return True, ""
+        return (False, "Game runs as Administrator but GameROBOT does not - "
+                       "Windows blocks the keystrokes (UIPI), so the bot can "
+                       "watch but the car never moves. Close the game, run "
+                       "GameROBOT as Administrator, then start the game again.")
+    except Exception:
+        return True, ""
+
+
 def native_dialog(title: str, message: str, buttons: tuple = ("OK",),
                   default: str | None = None) -> str | None:
     """Show a NATIVE dialog before any GUI toolkit exists. Returns the pressed

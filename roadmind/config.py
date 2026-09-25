@@ -59,6 +59,8 @@ DEFAULT_WORLD = {
 
 MODEL_SIZES = ["n", "s", "m"]  # YOLO11 size toggle (yolo11n.pt / s / m)
 
+CORE_CAL = ["throttle", "brake", "steer_left", "steer_right"]  # driving, must be probed
+
 
 @dataclass
 class CalibrationCurve:
@@ -136,3 +138,19 @@ class RoadMindConfig:
         # unusable regardless of its whitelist toggle ("keep empty if no key").
         return self.profile.actions.get(action, False) and bool(
             self.profile.bindings.get(action))
+
+    def missing_calibration(self) -> list[str]:
+        """Core drive controls that were never successfully probed.
+        A latency of 0 means the calibration hold never saw a screen response
+        (fresh profile, skipped, or probe failed)."""
+        out = []
+        for a in CORE_CAL:
+            c = self.profile.calibration.get(a) or {}
+            lat = c.get("latency_ms", 0) if isinstance(c, dict) \
+                else getattr(c, "latency_ms", 0)
+            if not lat:
+                out.append(ACTION_LABELS[a])
+        return out
+
+    def is_calibrated(self) -> bool:
+        return not self.missing_calibration()
